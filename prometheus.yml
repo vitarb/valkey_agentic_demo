@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: agents
+    static_configs:
+      - targets:
+        - enrich:9110
+        - fanout:9111
+        - reader:9112
+        - seed:9113
+        - replay:9114
+        - valkey_exporter:9121 

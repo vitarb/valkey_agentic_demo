@@ -26,4 +26,10 @@ data:
 	@echo "CSV ready → data/news_sample.csv"
 
 test:
-	pytest -q
+	python -m pytest -q
+
+ec2-up: ## Spin up an EC2 t3.micro
+	python scripts/ec2_up.py $(ARGS)
+
+ec2-down: ## Terminate the EC2 created by ec2-up
+	python scripts/ec2_down.py $(ARGS)

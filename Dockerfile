@@ -1,8 +1,14 @@
 FROM python:3.12-slim
-ENV HF_HUB_DISABLE_XET=1
+
+ENV AWS_REGION=us-east-1 \
+    AWS_ENDPOINT_URL=http://localhost:4566
+
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY agents ./agents
-COPY fanout.lua ./fanout.lua
-CMD ["python","-m","pip","--version"]
+COPY . .
+
+RUN pip install --no-cache-dir -e . \
+    boto3 localstack localstack-client pytest pytest-localstack
+
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["bash"]

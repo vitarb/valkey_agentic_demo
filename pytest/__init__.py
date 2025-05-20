@@ -4,6 +4,33 @@ import sys
 import tempfile
 import types
 from pathlib import Path
+import asyncio
+import os
+
+
+class _Mark:
+    def __getattr__(self, name):
+        def decorator(fn):
+            return fn
+        return decorator
+
+
+mark = _Mark()
+
+
+class Raises:
+    def __init__(self, exc):
+        self.exc = exc
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc, tb):
+        return isinstance(exc, self.exc)
+
+
+def raises(exc):
+    return Raises(exc)
 
 
 class MonkeyPatch:
@@ -24,12 +51,34 @@ class MonkeyPatch:
         self._items.append((obj, name, original))
         setattr(obj, name, value)
 
+    def setenv(self, key, value, prepend=False):
+        original = os.environ.get(key)
+        self._items.append((os.environ, key, original))
+        if prepend and original:
+            os.environ[key] = f"{value}{os.pathsep}{original}"
+        else:
+            os.environ[key] = value
+
+    def delenv(self, key, raising=True):
+        original = os.environ.get(key)
+        if key in os.environ:
+            self._items.append((os.environ, key, original))
+            del os.environ[key]
+        elif raising:
+            raise KeyError(key)
+
     def undo(self):
         for mod, attr, original in reversed(self._items):
-            if original is None:
-                delattr(mod, attr)
+            if mod is os.environ:
+                if original is None:
+                    mod.pop(attr, None)
+                else:
+                    mod[attr] = original
             else:
-                setattr(mod, attr, original)
+                if original is None:
+                    delattr(mod, attr)
+                else:
+                    setattr(mod, attr, original)
         self._items.clear()
 
 
@@ -54,15 +103,24 @@ def run_test(func):
     tmp = TmpPath()
     kwargs = {}
     sig = inspect.signature(func)
+    mod = importlib.import_module(func.__module__)
     for name in sig.parameters:
         if name == 'monkeypatch':
             kwargs[name] = mp
-        if name == 'tmp_path':
+        elif name == 'tmp_path':
             kwargs[name] = tmp.path
+        elif hasattr(mod, name):
+            kwargs[name] = getattr(mod, name)
     try:
-        func(**kwargs)
+        res = func(**kwargs)
+        if inspect.iscoroutine(res):
+            asyncio.run(res)
         result = True
-    except AssertionError:
+    except AssertionError as e:
+        print(func.__name__, 'assertion failed', e)
+        result = False
+    except Exception as e:
+        print(func.__name__, 'error', e)
         result = False
     mp.undo()
     tmp.cleanup()
@@ -71,7 +129,12 @@ def run_test(func):
 
 def discover(path):
     tests = []
-    for file in Path(path).rglob('test_*.py'):
+    p = Path(path)
+    if p.is_file():
+        files = [p]
+    else:
+        files = p.rglob('test_*.py')
+    for file in files:
         mod = importlib.import_module(str(file.with_suffix('')).replace('/', '.'))
         for name, obj in vars(mod).items():
             if name.startswith('test') and callable(obj):
@@ -82,6 +145,12 @@ def discover(path):
 def main(argv=None):
     argv = argv or sys.argv[1:]
     paths = [a for a in argv if not a.startswith('-')] or ['.']
+    try:
+        conf = importlib.import_module('tests.conftest')
+        if hasattr(conf, 'pytest_configure'):
+            conf.pytest_configure(types.SimpleNamespace())
+    except ModuleNotFoundError:
+        pass
     tests = []
     for p in paths:
         tests.extend(discover(p))

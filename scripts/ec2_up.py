@@ -5,10 +5,13 @@ import boto3
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image-id", default="ami-test")
+    parser.add_argument("--image-id", default=os.getenv("AMI_ID", "ami-test"))
     parser.add_argument("--instance-type", default="t3.micro")
     parser.add_argument("--outfile", default="instance_id.txt")
     args = parser.parse_args()
+
+    if not os.getenv("AWS_ENDPOINT_URL") and args.image_id == "ami-test":
+        parser.error("--image-id required when talking to AWS; use LocalStack or pass a valid AMI")
 
     ec2 = boto3.client(
         "ec2",

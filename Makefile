@@ -1,4 +1,4 @@
-.PHONY: up down clear logs data
+.PHONY: up down clear logs data test
 
 SERVICES = enrich fanout reader replay dashboard grafana
 SEED     = seed
@@ -24,3 +24,6 @@ logs:
 data:
 	python tools/make_cc_csv.py 50000 data/news_sample.csv
 	@echo "CSV ready → data/news_sample.csv"
+
+test:
+	pytest -q

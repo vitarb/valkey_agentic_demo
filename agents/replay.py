@@ -3,8 +3,6 @@ from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, start_http_server
 
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
-CSV    = os.getenv("REPLAY_FILE", "data/news_sample.csv")
-RPS    = float(os.getenv("REPLAY_RATE", "250"))
 
 MSG = Counter("producer_msgs_total", "")
 
@@ -17,10 +15,14 @@ async def redis_ready():
 
 async def main():
     start_http_server(9114)           # expose producer counter
+
+    csv_file = os.getenv("REPLAY_FILE", "data/news_sample.csv")
+    rate = float(os.getenv("REPLAY_RATE", "250"))
+
     try:
-        fp = open(CSV, newline="", encoding="utf-8")
+        fp = open(csv_file, newline="", encoding="utf-8")
     except FileNotFoundError:
-        raise SystemExit(f"[replay] '{CSV}' missing in container")
+        raise SystemExit(f"[replay] '{csv_file}' missing in container")
 
     reader = csv.DictReader(fp)
     r = await redis_ready()
@@ -34,7 +36,7 @@ async def main():
         except RedisConnError:
             r = await redis_ready()
             continue
-        await asyncio.sleep(1 / RPS)
+        await asyncio.sleep(1 / rate)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,6 +1,10 @@
 import os, json, asyncio, redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Gauge, start_http_server
+from builtins import open as builtin_open
+
+# expose builtin open so tests can monkeypatch mod.open
+open = builtin_open
 
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 TOPICS = ["politics","business","technology","sports","health",

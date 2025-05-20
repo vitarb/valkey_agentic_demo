@@ -14,6 +14,7 @@ setup(
             "tenacity",
             "flake8",
             "pytest",
+            "pytest_localstack",
         ]
     ),
     entry_points={

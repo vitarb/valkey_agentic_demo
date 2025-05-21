@@ -25,7 +25,11 @@ class LoggingClient:
         self._real = real_client
 
     def __getattr__(self, name):
-        attr = getattr(self._real, name)
+        try:
+            attr = getattr(self._real, name)
+        except AttributeError as e:
+            print(f"boto3 unknown.{name}()")
+            raise e
         if callable(attr):
             def wrapper(*args, **kwargs):
                 svc = getattr(getattr(self._real, "meta", None),

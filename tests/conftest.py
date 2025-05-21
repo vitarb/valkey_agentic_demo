@@ -79,4 +79,6 @@ def pytest_configure(config):
     sys.modules.setdefault("langgraph.graph", dummy_graph_mod)
     sys.modules.setdefault("langchain_core.runnables", dummy_runnables)
     sys.modules.setdefault("transformers", dummy_transformers)
+    # ensure boto3shim registers the mocked boto3 implementation
+    import valkey_agentic_demo.boto3shim  # noqa: F401
 

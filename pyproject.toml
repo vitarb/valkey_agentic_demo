@@ -29,7 +29,7 @@ extend-ignore = "E203"
 [project.optional-dependencies]
 full = [
     "typer",
-    "boto3",
+    "boto3_mock",
     "moto",
     "jinja2",
     "tenacity",

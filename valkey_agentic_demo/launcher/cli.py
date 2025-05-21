@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 
-import boto3
+from valkey_agentic_demo import boto3shim as boto3
 import typer
 
 from . import userdata

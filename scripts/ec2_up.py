@@ -1,6 +1,6 @@
 import argparse
 import os
-import boto3
+from valkey_agentic_demo import boto3shim as boto3
 
 
 DEFAULT_AMI = "ami-0f5c0fd7df464c253"  # Deep Learning AMI with GPU support

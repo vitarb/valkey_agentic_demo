@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-import boto3
+from valkey_agentic_demo import boto3shim as boto3
 from tenacity import retry
 
 

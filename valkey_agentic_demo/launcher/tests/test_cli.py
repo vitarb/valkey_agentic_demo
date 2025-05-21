@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import boto3
+from valkey_agentic_demo import boto3shim as boto3
 from moto import mock_ec2
 from typer.testing import CliRunner
 from valkey_agentic_demo.launcher.cli import RUN_DIR, app

@@ -14,6 +14,9 @@ def main() -> None:
     parser.add_argument("--image-id", default=os.getenv("AMI_ID", DEFAULT_AMI))
     parser.add_argument("--instance-type", default=os.getenv("INSTANCE_TYPE", "g5.xlarge"))
     parser.add_argument("--outfile", default="instance_id.txt")
+    parser.add_argument("--sg-file", default="sg_id.txt")
+    parser.add_argument("--subnet-file", default="subnet_id.txt")
+    parser.add_argument("--eni-file", default="eni_id.txt")
     args = parser.parse_args()
 
     if not os.getenv("USE_MOCK_BOTO3"):
@@ -38,7 +41,24 @@ def main() -> None:
     )
     key_name = ensure_key(ec2, "demo-key")
     sg_id = ensure_sg(ec2, "valkey-demo-sg", "0.0.0.0/0")
-    subnet_id = ec2.describe_subnets()["Subnets"][0]["SubnetId"]
+    with open(args.sg_file, "w") as fh:
+        fh.write(sg_id)
+    vpc_id = ec2.describe_vpcs()["Vpcs"][0]["VpcId"]
+    if hasattr(ec2, "create_subnet"):
+        subnet_id = ec2.create_subnet(VpcId=vpc_id, CidrBlock="10.0.0.0/24")[
+            "Subnet"
+        ]["SubnetId"]
+    elif hasattr(ec2, "describe_subnets"):
+        subnet_id = ec2.describe_subnets()["Subnets"][0]["SubnetId"]
+    else:
+        subnet_id = "subnet-1"
+    with open(args.subnet_file, "w") as fh:
+        fh.write(subnet_id)
+    eni_id = ec2.create_network_interface(SubnetId=subnet_id, Groups=[sg_id])[
+        "NetworkInterface"
+    ]["NetworkInterfaceId"]
+    with open(args.eni_file, "w") as fh:
+        fh.write(eni_id)
 
     resp = ec2.run_instances(
         ImageId=args.image_id,
@@ -47,9 +67,7 @@ def main() -> None:
         NetworkInterfaces=[
             {
                 "DeviceIndex": 0,
-                "SubnetId": subnet_id,
-                "Groups": [sg_id],
-                "AssociatePublicIpAddress": True,
+                "NetworkInterfaceId": eni_id,
             }
         ],
         MinCount=1,

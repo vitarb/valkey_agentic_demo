@@ -15,6 +15,7 @@ def _load() -> dict:
         "instances": {},
         "calls": {"run_instances": 0},
         "enis": {},
+        "subnets": {},
     }
 
 
@@ -71,7 +72,29 @@ class EC2Client:
 
     def describe_subnets(self):
         self.state.update(_load())
-        return {'Subnets': [{'SubnetId': 'subnet-1'}]}
+        subs = [
+            {"SubnetId": sid, **data}
+            for sid, data in self.state.get("subnets", {}).items()
+        ]
+        if not subs:
+            subs = [{"SubnetId": "subnet-1"}]
+        return {"Subnets": subs}
+
+    def create_subnet(self, VpcId, CidrBlock):
+        self.state.update(_load())
+        sid = f"subnet-{uuid.uuid4().hex[:8]}"
+        self.state.setdefault("subnets", {})[sid] = {
+            "VpcId": VpcId,
+            "CidrBlock": CidrBlock,
+        }
+        _save()
+        return {"Subnet": {"SubnetId": sid}}
+
+    def delete_subnet(self, SubnetId):
+        self.state.update(_load())
+        self.state.get("subnets", {}).pop(SubnetId, None)
+        _save()
+        return {}
 
     def create_network_interface(self, SubnetId, Groups=None):
         self.state.update(_load())
@@ -83,6 +106,12 @@ class EC2Client:
         }
         _save()
         return {'NetworkInterface': {'NetworkInterfaceId': eni_id}}
+
+    def delete_network_interface(self, NetworkInterfaceId):
+        self.state.update(_load())
+        self.state.get('enis', {}).pop(NetworkInterfaceId, None)
+        _save()
+        return {}
 
     def describe_instance_status(self, InstanceIds=None):
         self.state.update(_load())
@@ -118,6 +147,12 @@ class EC2Client:
         _save()
         return {}
 
+    def delete_security_group(self, GroupId):
+        self.state.update(_load())
+        self.state.get('sgs', {}).pop(GroupId, None)
+        _save()
+        return {}
+
 
 def client(service_name, region_name=None, **kwargs):
     if service_name == 'ec2':
@@ -130,5 +165,6 @@ def reset():
     _state['sgs'].clear()
     _state['instances'].clear()
     _state['enis'].clear()
+    _state['subnets'].clear()
     _state['calls']['run_instances'] = 0
     _save()

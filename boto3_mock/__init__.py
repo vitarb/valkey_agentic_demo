@@ -9,7 +9,13 @@ STATE_FILE = Path("boto3_state.json")
 def _load() -> dict:
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text())
-    return {"keys": {}, "sgs": {}, "instances": {}, "calls": {"run_instances": 0}}
+    return {
+        "keys": {},
+        "sgs": {},
+        "instances": {},
+        "calls": {"run_instances": 0},
+        "enis": {},
+    }
 
 
 _state = _load()
@@ -63,6 +69,29 @@ class EC2Client:
         self.state.update(_load())
         return {'Vpcs': [{'VpcId': 'vpc-1'}]}
 
+    def describe_subnets(self):
+        self.state.update(_load())
+        return {'Subnets': [{'SubnetId': 'subnet-1'}]}
+
+    def create_network_interface(self, SubnetId, Groups=None):
+        self.state.update(_load())
+        eni_id = f'eni-{uuid.uuid4().hex[:8]}'
+        self.state.setdefault('enis', {})[eni_id] = {
+            'NetworkInterfaceId': eni_id,
+            'SubnetId': SubnetId,
+            'Groups': Groups or [],
+        }
+        _save()
+        return {'NetworkInterface': {'NetworkInterfaceId': eni_id}}
+
+    def describe_instance_status(self, InstanceIds=None):
+        self.state.update(_load())
+        statuses = []
+        for iid in InstanceIds or []:
+            if iid in self.state['instances']:
+                statuses.append({'InstanceId': iid, 'InstanceStatus': {'Status': 'ok'}})
+        return {'InstanceStatuses': statuses}
+
     def run_instances(self, **kwargs):
         self.state.update(_load())
         if kwargs.get('DryRun'):
@@ -100,5 +129,6 @@ def reset():
     _state['keys'].clear()
     _state['sgs'].clear()
     _state['instances'].clear()
+    _state['enis'].clear()
     _state['calls']['run_instances'] = 0
     _save()

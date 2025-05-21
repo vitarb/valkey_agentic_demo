@@ -1,4 +1,4 @@
-import sys, types, pathlib
+import sys, types, pathlib, os
 
 # ensure project root is on import path
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -71,6 +71,7 @@ dummy_transformers.pipeline = lambda *a, **k: None
 
 
 def pytest_configure(config):
+    os.environ.setdefault("USE_MOCK_BOTO3", "1")
     sys.modules.setdefault("redis", dummy_redis)
     sys.modules.setdefault("redis.asyncio", dummy_asyncio)
     sys.modules.setdefault("redis.exceptions", dummy_exceptions)

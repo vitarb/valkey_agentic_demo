@@ -7,7 +7,7 @@ setup(
         include=[
             "valkey_agentic_demo",
             "valkey_agentic_demo.*",
-            "boto3",
+            "boto3_mock",
             "moto",
             "typer",
             "jinja2",

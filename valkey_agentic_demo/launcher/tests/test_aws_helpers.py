@@ -1,4 +1,4 @@
-import boto3
+from valkey_agentic_demo import boto3shim as boto3
 from moto import mock_ec2
 from valkey_agentic_demo.launcher.aws_helpers import (
     ensure_key,

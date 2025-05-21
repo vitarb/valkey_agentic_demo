@@ -1,8 +1,10 @@
 #!/bin/bash
 set -e
-localstack start -d
-until awslocal sts get-caller-identity >/dev/null 2>&1; do
-  sleep 1
-done
+if [ "${USE_MOCK_BOTO3}" = "1" ]; then
+  localstack start -d
+  until awslocal sts get-caller-identity >/dev/null 2>&1; do
+    sleep 1
+  done
+fi
 exec "$@"
 

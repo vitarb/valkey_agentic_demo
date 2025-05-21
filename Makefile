@@ -2,6 +2,7 @@
 
 SERVICES = enrich fanout reader replay dashboard grafana
 SEED     = seed
+MOCK ?=
 
 up:
 	docker compose up --build -d
@@ -29,7 +30,7 @@ test:
 	python -m pytest -q
 
 ec2-up: ## Spin up an EC2 g5.xlarge
-	PYTHONPATH=$(CURDIR) python scripts/ec2_up.py $(ARGS)
+	USE_MOCK_BOTO3=$(MOCK) PYTHONPATH=$(CURDIR) python scripts/ec2_up.py $(ARGS)
 
 ec2-down: ## Terminate the EC2 created by ec2-up
-	PYTHONPATH=$(CURDIR) python scripts/ec2_down.py $(ARGS)
+	USE_MOCK_BOTO3=$(MOCK) PYTHONPATH=$(CURDIR) python scripts/ec2_down.py $(ARGS)

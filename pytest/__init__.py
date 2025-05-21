@@ -104,6 +104,8 @@ def run_test(func):
     kwargs = {}
     sig = inspect.signature(func)
     mod = importlib.import_module(func.__module__)
+    from valkey_agentic_demo import boto3shim
+    boto3shim.reset()
     for name in sig.parameters:
         if name == 'monkeypatch':
             kwargs[name] = mp
@@ -122,6 +124,7 @@ def run_test(func):
     except Exception as e:
         print(func.__name__, 'error', e)
         result = False
+    boto3shim.reset()
     mp.undo()
     tmp.cleanup()
     return result

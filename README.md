@@ -29,6 +29,10 @@ make MOCK=1 ec2-up
 The helper defaults to a GPU-enabled AMI so you can simply run `make ec2-up`
 against AWS. Pass `--image-id` to override if needed.
 
+`make ec2-up` automatically creates a key-pair `demo-key` and a security group
+`valkey-demo-sg` if they don't already exist, then waits for the instance to be
+ready before writing the ID to `instance_id.txt`.
+
 To use the helper scripts with real AWS, install the `boto3` package and run:
 
 ```bash

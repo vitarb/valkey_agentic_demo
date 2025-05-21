@@ -36,7 +36,7 @@ def _load_meta(run_id: str) -> dict:
 @app.command()
 def up(
     run_id: str = None,
-    instance_type: str = "g5.2xlarge",
+    instance_type: str = "g5.xlarge",
     spot: bool = False,
     ssm: bool = False,
     dry_run: bool = False,
@@ -47,7 +47,7 @@ def up(
     sg = ensure_sg(ec2, "valkey-demo-sg", "0.0.0.0/0")
     iid = launch_instance(
         ec2,
-        "ami-123",
+        "ami-0f5c0fd7df464c253",
         instance_type,
         key or "",
         sg,

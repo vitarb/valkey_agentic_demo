@@ -5,8 +5,8 @@
 set -euo pipefail
 
 # ───── configuration ────────────────────────────────────────────────────────
-REGION=${AWS_DEFAULT_REGION:-us-east-1}
-INSTANCE_TYPE=${INSTANCE_TYPE:-g5.2xlarge}
+REGION=${AWS_DEFAULT_REGION:-us-west-2}
+INSTANCE_TYPE=${INSTANCE_TYPE:-g5.xlarge}
 KEY_NAME=demo-key
 SG_NAME=valkey-demo-sg
 TAG_KEY=valkey-demo

@@ -13,8 +13,8 @@ Build the container and run the EC2 helper scripts against LocalStack:
 
 ```bash
 docker build -t valkey-demo .
-docker run --rm -e USE_MOCK_BOTO3=1 valkey-demo \
-  /bin/bash -c "make ec2-up && sleep 5 && make ec2-down && pytest -q"
+docker run --rm valkey-demo \
+  /bin/bash -c "make MOCK=1 ec2-up && sleep 5 && make MOCK=1 ec2-down && pytest -q"
 ```
 
 If you'd rather run the helper scripts on your host with LocalStack, start it
@@ -24,17 +24,14 @@ first and export the environment variables that the scripts expect:
 localstack start -d
 export AWS_ENDPOINT_URL=http://localhost:4566
 export AWS_REGION=us-west-2
-export USE_MOCK_BOTO3=1
-make ec2-up
+make MOCK=1 ec2-up
 ```
 The helper defaults to a GPU-enabled AMI so you can simply run `make ec2-up`
-against AWS.  Pass `--image-id` to override if needed.
+against AWS. Pass `--image-id` to override if needed.
 
-To use the helper scripts with real AWS, install the `boto3` package and do not
-set `USE_MOCK_BOTO3`:
+To use the helper scripts with real AWS, install the `boto3` package and run:
 
 ```bash
 pip install boto3
-unset USE_MOCK_BOTO3
 make ec2-up
 ```

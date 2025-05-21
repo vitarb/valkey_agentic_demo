@@ -28,7 +28,7 @@ data:
 test:
 	python -m pytest -q
 
-ec2-up: ## Spin up an EC2 t3.micro
+ec2-up: ## Spin up an EC2 g5.xlarge
 	python scripts/ec2_up.py $(ARGS)
 
 ec2-down: ## Terminate the EC2 created by ec2-up

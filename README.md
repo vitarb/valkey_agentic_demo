@@ -23,12 +23,8 @@ first and export the environment variables that the scripts expect:
 ```bash
 localstack start -d
 export AWS_ENDPOINT_URL=http://localhost:4566
-export AWS_REGION=us-east-1
+export AWS_REGION=us-west-2
 make ec2-up
 ```
-
-When running `make ec2-up` directly against AWS, specify a valid AMI ID:
-
-```bash
-make ec2-up ARGS="--image-id ami-xxxxxxxxxxxx"
-```
+The helper defaults to a GPU-enabled AMI so you can simply run `make ec2-up`
+against AWS.  Pass `--image-id` to override if needed.

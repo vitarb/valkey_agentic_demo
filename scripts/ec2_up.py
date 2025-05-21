@@ -3,20 +3,20 @@ import os
 import boto3
 
 
+DEFAULT_AMI = "ami-0f5c0fd7df464c253"  # Deep Learning AMI with GPU support
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image-id", default=os.getenv("AMI_ID", "ami-test"))
-    parser.add_argument("--instance-type", default="t3.micro")
+    parser.add_argument("--image-id", default=os.getenv("AMI_ID", DEFAULT_AMI))
+    parser.add_argument("--instance-type", default=os.getenv("INSTANCE_TYPE", "g5.xlarge"))
     parser.add_argument("--outfile", default="instance_id.txt")
     args = parser.parse_args()
-
-    if not os.getenv("AWS_ENDPOINT_URL") and args.image_id == "ami-test":
-        parser.error("--image-id required when talking to AWS; use LocalStack or pass a valid AMI")
 
     ec2 = boto3.client(
         "ec2",
         endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
-        region_name=os.getenv("AWS_REGION"),
+        region_name=os.getenv("AWS_REGION", "us-west-2"),
     )
     resp = ec2.run_instances(
         ImageId=args.image_id,

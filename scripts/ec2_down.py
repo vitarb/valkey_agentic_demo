@@ -31,7 +31,8 @@ def main() -> None:
     iid = Path(args.infile).read_text().strip()
     sg_id = Path(args.sg_file).read_text().strip()
     subnet_id = Path(args.subnet_file).read_text().strip()
-    eni_id = Path(args.eni_file).read_text().strip()
+    eni_path = Path(args.eni_file)
+    eni_id = eni_path.read_text().strip() if eni_path.exists() else None
 
     ec2 = boto3.client(
         "ec2",
@@ -39,7 +40,8 @@ def main() -> None:
         region_name=os.getenv("AWS_REGION"),
     )
     ec2.terminate_instances(InstanceIds=[iid])
-    ec2.delete_network_interface(NetworkInterfaceId=eni_id)
+    if eni_id and hasattr(ec2, "delete_network_interface"):
+        ec2.delete_network_interface(NetworkInterfaceId=eni_id)
     ec2.delete_security_group(GroupId=sg_id)
     if hasattr(ec2, "delete_subnet"):
         ec2.delete_subnet(SubnetId=subnet_id)

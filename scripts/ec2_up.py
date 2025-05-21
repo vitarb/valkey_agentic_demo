@@ -54,25 +54,33 @@ def main() -> None:
         subnet_id = "subnet-1"
     with open(args.subnet_file, "w") as fh:
         fh.write(subnet_id)
-    eni_id = ec2.create_network_interface(SubnetId=subnet_id, Groups=[sg_id])[
-        "NetworkInterface"
-    ]["NetworkInterfaceId"]
-    with open(args.eni_file, "w") as fh:
-        fh.write(eni_id)
+    eni_id = None
+    if hasattr(ec2, "create_network_interface"):
+        eni_id = ec2.create_network_interface(SubnetId=subnet_id, Groups=[sg_id])[
+            "NetworkInterface"
+        ]["NetworkInterfaceId"]
+        with open(args.eni_file, "w") as fh:
+            fh.write(eni_id)
 
-    resp = ec2.run_instances(
-        ImageId=args.image_id,
-        InstanceType=args.instance_type,
-        KeyName=key_name,
-        NetworkInterfaces=[
+    run_args = {
+        "ImageId": args.image_id,
+        "InstanceType": args.instance_type,
+        "KeyName": key_name,
+        "MinCount": 1,
+        "MaxCount": 1,
+    }
+    if eni_id:
+        run_args["NetworkInterfaces"] = [
             {
                 "DeviceIndex": 0,
                 "NetworkInterfaceId": eni_id,
             }
-        ],
-        MinCount=1,
-        MaxCount=1,
-    )
+        ]
+    else:
+        run_args["SubnetId"] = subnet_id
+        run_args["SecurityGroupIds"] = [sg_id]
+
+    resp = ec2.run_instances(**run_args)
     iid = resp["Instances"][0]["InstanceId"]
     # wait until instance is reported healthy
     for _ in range(60):

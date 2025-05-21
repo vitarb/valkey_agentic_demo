@@ -29,3 +29,12 @@ make ec2-up
 ```
 The helper defaults to a GPU-enabled AMI so you can simply run `make ec2-up`
 against AWS.  Pass `--image-id` to override if needed.
+
+To use the helper scripts with real AWS, install the `boto3` package and do not
+set `USE_MOCK_BOTO3`:
+
+```bash
+pip install boto3
+unset USE_MOCK_BOTO3
+make ec2-up
+```

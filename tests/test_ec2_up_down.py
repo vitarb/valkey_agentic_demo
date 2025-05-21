@@ -22,8 +22,14 @@ def test_ec2_up_down(localstack, tmp_path):
     assert ec2.describe_key_pairs(KeyNames=["demo-key"])["KeyPairs"]
     sgs = ec2.describe_security_groups(Filters=[{"Name": "group-name", "Values": ["valkey-demo-sg"]}])["SecurityGroups"]
     assert sgs
+    assert boto3._state["subnets"]
+    assert boto3._state["enis"]
 
     subprocess.check_call(["make", "MOCK=1", "ec2-down"], env=env)
     res = ec2.describe_instances()
     instances = [i for r in res.get("Reservations", []) for i in r.get("Instances", [])]
     assert len(instances) == 0
+    sgs = ec2.describe_security_groups(Filters=[{"Name": "group-name", "Values": ["valkey-demo-sg"]}])["SecurityGroups"]
+    assert not sgs
+    assert not boto3._state["subnets"]
+    assert not boto3._state["enis"]

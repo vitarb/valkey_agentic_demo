@@ -8,6 +8,9 @@ from valkey_agentic_demo import boto3shim as boto3
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--infile", default="instance_id.txt")
+    parser.add_argument("--sg-file", default="sg_id.txt")
+    parser.add_argument("--subnet-file", default="subnet_id.txt")
+    parser.add_argument("--eni-file", default="eni_id.txt")
     args = parser.parse_args()
 
     if not os.getenv("USE_MOCK_BOTO3"):
@@ -26,6 +29,9 @@ def main() -> None:
             raise
 
     iid = Path(args.infile).read_text().strip()
+    sg_id = Path(args.sg_file).read_text().strip()
+    subnet_id = Path(args.subnet_file).read_text().strip()
+    eni_id = Path(args.eni_file).read_text().strip()
 
     ec2 = boto3.client(
         "ec2",
@@ -33,6 +39,10 @@ def main() -> None:
         region_name=os.getenv("AWS_REGION"),
     )
     ec2.terminate_instances(InstanceIds=[iid])
+    ec2.delete_network_interface(NetworkInterfaceId=eni_id)
+    ec2.delete_security_group(GroupId=sg_id)
+    if hasattr(ec2, "delete_subnet"):
+        ec2.delete_subnet(SubnetId=subnet_id)
     print(iid)
 
 

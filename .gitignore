@@ -1,4 +1,5 @@
 __pycache__/\n*.pyc\n
-
+.demo_runs
 data
 grafana
+*.pem

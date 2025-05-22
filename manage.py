@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Manage the Valkey agentic demo EC2 host (Python replacement for demo.sh)."""
 
-import argparse, datetime as _dt, json, os, pathlib, sys
+import argparse, base64, datetime as _dt, json, os, pathlib, sys
 from typing import Optional
 
 RUNS_DIR = pathlib.Path('.demo_runs')
@@ -18,7 +18,7 @@ exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&
 set -eux
 # --- packages: newer Python 3.11 + docker -------------------------------------
 amazon-linux-extras enable python3.11 epel
-yum -y install python3.11 python3.11-devel git docker
+yum -y install python3.11 python3.11-devel git docker curl
 alternatives --set python3 /usr/bin/python3.11
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
@@ -156,7 +156,7 @@ def _run_instance(region: str, profile: Optional[str], instance_type: str, spot:
         'SecurityGroupIds': [sg_id],
         'TagSpecifications': [{'ResourceType': 'instance', 'Tags': [{'Key': TAG_KEY, 'Value': TAG_VAL}]}],
         'BlockDeviceMappings': [{'DeviceName': '/dev/xvda', 'Ebs': {'VolumeSize': 100}}],
-        'UserData': USER_DATA,
+        'UserData': base64.b64encode(USER_DATA.encode()).decode(),
         'MinCount': 1,
         'MaxCount': 1,
     }

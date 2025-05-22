@@ -10,9 +10,6 @@ type Command struct {
 	Short string
 	Long  string
 
-	SilenceUsage  bool
-	SilenceErrors bool
-
 	RunE func(cmd *Command, args []string) error
 
 	flagSet     *flag.FlagSet

@@ -113,13 +113,20 @@ class EC2Client:
         _save()
         return {}
 
-    def describe_instance_status(self, InstanceIds=None):
-        self.state.update(_load())
-        statuses = []
-        for iid in InstanceIds or []:
-            if iid in self.state['instances']:
-                statuses.append({'InstanceId': iid, 'InstanceStatus': {'Status': 'ok'}})
-        return {'InstanceStatuses': statuses}
+    def describe_instance_status(self, InstanceIds):
+        """
+        Stub health-check API used by scripts/ec2_up.py.
+        Always returns an 'ok' status for the first InstanceId.
+        """
+        return {
+            "InstanceStatuses": [
+                {
+                    "InstanceId": InstanceIds[0],
+                    "InstanceStatus": {"Status": "ok"},
+                    "SystemStatus": {"Status": "ok"},
+                }
+            ]
+        }
 
     def run_instances(self, **kwargs):
         self.state.update(_load())

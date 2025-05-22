@@ -127,7 +127,13 @@ def _ensure_security_group(region: str, profile: Optional[str], my_ip: str, use_
         sg_id = ec2.create_security_group(GroupName=SG_NAME, Description='Valkey demo SG', VpcId=vpc)['GroupId']
     ports = [3000, 9090]
     if use_ssh:
-        ports.insert(0, 22)
+        try:
+            ec2.authorize_security_group_ingress(
+                GroupId=sg_id,
+                IpPermissions=[{'IpProtocol': 'tcp', 'FromPort': 22, 'ToPort': 22, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}]
+            )
+        except Exception:
+            pass
     for p in ports:
         try:
             ec2.authorize_security_group_ingress(

@@ -17,8 +17,8 @@ USER_DATA = r"""#!/bin/bash
 exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 set -eux
 # --- packages: newer Python 3.11 + docker -------------------------------------
-amazon-linux-extras enable python3.11 epel
-yum -y install python3.11 python3.11-devel git docker curl
+amazon-linux-extras enable epel
+yum -y install python3.11 python3.11-devel git docker curl kernel-devel gcc
 alternatives --set python3 /usr/bin/python3.11
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
@@ -35,6 +35,9 @@ ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compo
 curl -fsSL https://nvidia.github.io/nvidia-docker/amzn2/nvidia-docker.repo \
  | tee /etc/yum.repos.d/nvidia-docker.repo
 yum -y install nvidia-driver-latest-dkms nvidia-container-toolkit
+if ! grep -q nvidia /etc/docker/daemon.json 2>/dev/null; then
+    nvidia-ctk runtime configure --runtime=docker
+fi
 systemctl restart docker
 usermod -aG docker ec2-user
 
@@ -47,6 +50,9 @@ cd valkey_agentic_demo
 python3 -m pip install -r requirements.txt
 python3 tools/make_cc_csv.py 50000 data/news_sample.csv
 python3 tools/bootstrap_grafana.py
+if ! grep -q 'runtime: nvidia' docker-compose.yml; then
+    sed -i '/image: ollama\/ollama:latest/a\\    runtime: nvidia' docker-compose.yml
+fi
 docker-compose pull 2>&1 | tee docker-compose.log
 docker-compose up -d   2>&1 | tee -a docker-compose.log
 EOSU

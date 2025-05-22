@@ -84,8 +84,21 @@ def main() -> None:
     iid = resp["Instances"][0]["InstanceId"]
     # wait until instance is reported healthy
     for _ in range(60):
-        st = ec2.describe_instance_status(InstanceIds=[iid]).get("InstanceStatuses")
-        if st and st[0].get("InstanceStatus", {}).get("Status") == "ok":
+        if hasattr(ec2, "describe_instance_status"):
+            st = ec2.describe_instance_status(InstanceIds=[iid]).get(
+                "InstanceStatuses"
+            )
+            ok = st and st[0].get("InstanceStatus", {}).get("Status") == "ok"
+        else:
+            st = ec2.describe_instances(InstanceIds=[iid]).get("Reservations")
+            ok = (
+                st
+                and st[0]["Instances"][0]
+                .get("State", {})
+                .get("Name")
+                in {"running", "pending"}
+            )
+        if ok:
             break
         time.sleep(5)
 

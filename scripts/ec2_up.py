@@ -19,20 +19,19 @@ def main() -> None:
     parser.add_argument("--eni-file", default="eni_id.txt")
     args = parser.parse_args()
 
-    if not os.getenv("USE_MOCK_BOTO3"):
-        try:
-            subprocess.run(
-                ["aws", "sts", "get-caller-identity"],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except FileNotFoundError:
-            print("aws CLI not found")
-            raise
-        except subprocess.CalledProcessError as e:
-            print(f"aws CLI failed: {e.stderr.decode().strip()}")
-            raise
+    try:
+        subprocess.run(
+            ["aws", "sts", "get-caller-identity"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        print("aws CLI not found")
+        raise
+    except subprocess.CalledProcessError as e:
+        print(f"aws CLI failed: {e.stderr.decode().strip()}")
+        raise
 
     ec2 = boto3.client(
         "ec2",
@@ -44,23 +43,16 @@ def main() -> None:
     with open(args.sg_file, "w") as fh:
         fh.write(sg_id)
     vpc_id = ec2.describe_vpcs()["Vpcs"][0]["VpcId"]
-    if hasattr(ec2, "create_subnet"):
-        subnet_id = ec2.create_subnet(VpcId=vpc_id, CidrBlock="10.0.0.0/24")[
-            "Subnet"
-        ]["SubnetId"]
-    elif hasattr(ec2, "describe_subnets"):
-        subnet_id = ec2.describe_subnets()["Subnets"][0]["SubnetId"]
-    else:
-        subnet_id = "subnet-1"
+    subnet_id = ec2.create_subnet(VpcId=vpc_id, CidrBlock="10.0.0.0/24")[
+        "Subnet"
+    ]["SubnetId"]
     with open(args.subnet_file, "w") as fh:
         fh.write(subnet_id)
-    eni_id = None
-    if hasattr(ec2, "create_network_interface"):
-        eni_id = ec2.create_network_interface(SubnetId=subnet_id, Groups=[sg_id])[
-            "NetworkInterface"
-        ]["NetworkInterfaceId"]
-        with open(args.eni_file, "w") as fh:
-            fh.write(eni_id)
+    eni_id = ec2.create_network_interface(SubnetId=subnet_id, Groups=[sg_id])[
+        "NetworkInterface"
+    ]["NetworkInterfaceId"]
+    with open(args.eni_file, "w") as fh:
+        fh.write(eni_id)
 
     run_args = {
         "ImageId": args.image_id,
@@ -69,35 +61,21 @@ def main() -> None:
         "MinCount": 1,
         "MaxCount": 1,
     }
-    if eni_id:
-        run_args["NetworkInterfaces"] = [
-            {
-                "DeviceIndex": 0,
-                "NetworkInterfaceId": eni_id,
-            }
-        ]
-    else:
-        run_args["SubnetId"] = subnet_id
-        run_args["SecurityGroupIds"] = [sg_id]
+    run_args["NetworkInterfaces"] = [
+        {
+            "DeviceIndex": 0,
+            "NetworkInterfaceId": eni_id,
+        }
+    ]
 
     resp = ec2.run_instances(**run_args)
     iid = resp["Instances"][0]["InstanceId"]
     # wait until instance is reported healthy
     for _ in range(60):
-        if hasattr(ec2, "describe_instance_status"):
-            st = ec2.describe_instance_status(InstanceIds=[iid]).get(
-                "InstanceStatuses"
-            )
-            ok = st and st[0].get("InstanceStatus", {}).get("Status") == "ok"
-        else:
-            st = ec2.describe_instances(InstanceIds=[iid]).get("Reservations")
-            ok = (
-                st
-                and st[0]["Instances"][0]
-                .get("State", {})
-                .get("Name")
-                in {"running", "pending"}
-            )
+        st = ec2.describe_instance_status(InstanceIds=[iid]).get(
+            "InstanceStatuses"
+        )
+        ok = st and st[0].get("InstanceStatus", {}).get("Status") == "ok"
         if ok:
             break
         time.sleep(5)

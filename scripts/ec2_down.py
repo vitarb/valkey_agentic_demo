@@ -13,20 +13,19 @@ def main() -> None:
     parser.add_argument("--eni-file", default="eni_id.txt")
     args = parser.parse_args()
 
-    if not os.getenv("USE_MOCK_BOTO3"):
-        try:
-            subprocess.run(
-                ["aws", "sts", "get-caller-identity"],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except FileNotFoundError:
-            print("aws CLI not found")
-            raise
-        except subprocess.CalledProcessError as e:
-            print(f"aws CLI failed: {e.stderr.decode().strip()}")
-            raise
+    try:
+        subprocess.run(
+            ["aws", "sts", "get-caller-identity"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        print("aws CLI not found")
+        raise
+    except subprocess.CalledProcessError as e:
+        print(f"aws CLI failed: {e.stderr.decode().strip()}")
+        raise
 
     iid = Path(args.infile).read_text().strip()
     sg_id = Path(args.sg_file).read_text().strip()
@@ -40,11 +39,10 @@ def main() -> None:
         region_name=os.getenv("AWS_REGION"),
     )
     ec2.terminate_instances(InstanceIds=[iid])
-    if eni_id and hasattr(ec2, "delete_network_interface"):
+    if eni_id:
         ec2.delete_network_interface(NetworkInterfaceId=eni_id)
     ec2.delete_security_group(GroupId=sg_id)
-    if hasattr(ec2, "delete_subnet"):
-        ec2.delete_subnet(SubnetId=subnet_id)
+    ec2.delete_subnet(SubnetId=subnet_id)
     print(iid)
 
 

@@ -7,14 +7,10 @@ setup(
         include=[
             "valkey_agentic_demo",
             "valkey_agentic_demo.*",
-            "boto3_mock",
-            "moto",
             "typer",
             "jinja2",
             "tenacity",
             "flake8",
-            "pytest",
-            "pytest_localstack",
         ]
     ),
     entry_points={

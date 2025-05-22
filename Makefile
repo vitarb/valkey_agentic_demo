@@ -1,8 +1,7 @@
-.PHONY: up down clear logs data test
+.PHONY: up down clear logs data
 
 SERVICES = enrich fanout reader replay dashboard grafana
 SEED     = seed
-MOCK ?=
 
 up:
 	docker compose up --build -d
@@ -26,11 +25,8 @@ data:
 	python tools/make_cc_csv.py 50000 data/news_sample.csv
 	@echo "CSV ready → data/news_sample.csv"
 
-test:
-	python -m pytest -q
-
 ec2-up: ## Spin up an EC2 g5.xlarge
-	USE_MOCK_BOTO3=$(MOCK) PYTHONPATH=$(CURDIR) python scripts/ec2_up.py $(ARGS)
+        PYTHONPATH=$(CURDIR) python scripts/ec2_up.py $(ARGS)
 
 ec2-down: ## Terminate the EC2 created by ec2-up
-	USE_MOCK_BOTO3=$(MOCK) PYTHONPATH=$(CURDIR) python scripts/ec2_down.py $(ARGS)
+        PYTHONPATH=$(CURDIR) python scripts/ec2_down.py $(ARGS)

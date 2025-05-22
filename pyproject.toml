@@ -11,7 +11,6 @@ requires-python = ">=3.11"
 [project.scripts]
 valkey-demo = "valkey_agentic_demo.launcher.cli:app"
 flake8 = "flake8:main"
-pytest = "pytest:main"
 
 [tool.black]
 line-length = 88
@@ -29,8 +28,6 @@ extend-ignore = "E203"
 [project.optional-dependencies]
 full = [
     "typer",
-    "boto3_mock",
-    "moto",
     "jinja2",
     "tenacity",
 ]

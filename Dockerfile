@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . .
 
 RUN pip install --no-cache-dir -e . \
-    boto3 localstack localstack-client pytest pytest-localstack
+    boto3 localstack localstack-client
 
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]

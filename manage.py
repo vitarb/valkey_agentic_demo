@@ -16,14 +16,19 @@ PEM_FILE = pathlib.Path(f"{KEY_NAME}.pem")
 USER_DATA = r"""#!/bin/bash
 exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 set -eux
-# --- packages: newer Python 3.11 + docker -------------------------------------
-amazon-linux-extras enable python3.11 epel
-yum -y install python3.11 python3.11-devel git docker curl
-alternatives --set python3 /usr/bin/python3.11
+# --- packages: newer Python 3.10 + docker -------------------------------------
+amazon-linux-extras enable python3.10 epel
+yum -y install python3.10 python3.10-devel git curl kernel-devel gcc
+alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
+alternatives --install /usr/bin/pip3    pip3    /usr/bin/pip3.10    1
+alternatives --set python3 /usr/bin/python3.10
+alternatives --set pip3    /usr/bin/pip3.10
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
 
-systemctl enable --now docker
+amazon-linux-extras install -y docker
+systemctl start docker
+systemctl enable docker || true
 # Docker Compose v2 plugin
 mkdir -p /usr/libexec/docker/cli-plugins
 curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
@@ -35,6 +40,9 @@ ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compo
 curl -fsSL https://nvidia.github.io/nvidia-docker/amzn2/nvidia-docker.repo \
  | tee /etc/yum.repos.d/nvidia-docker.repo
 yum -y install nvidia-driver-latest-dkms nvidia-container-toolkit
+if ! grep -q nvidia /etc/docker/daemon.json 2>/dev/null; then
+    nvidia-ctk runtime configure --runtime=docker
+fi
 systemctl restart docker
 usermod -aG docker ec2-user
 
@@ -44,9 +52,12 @@ set -eux
 cd ~
 git clone --depth=1 https://github.com/vitarb/valkey_agentic_demo.git
 cd valkey_agentic_demo
-python3 -m pip install -r requirements.txt
-python3 tools/make_cc_csv.py 50000 data/news_sample.csv
-python3 tools/bootstrap_grafana.py
+/usr/bin/python3.10 -m pip install -r requirements.txt
+/usr/bin/python3.10 tools/make_cc_csv.py 50000 data/news_sample.csv
+/usr/bin/python3.10 tools/bootstrap_grafana.py
+if ! grep -q 'runtime: nvidia' docker-compose.yml; then
+    sed -i '/image: ollama\/ollama:latest/a\\    runtime: nvidia' docker-compose.yml
+fi
 docker-compose pull 2>&1 | tee docker-compose.log
 docker-compose up -d   2>&1 | tee -a docker-compose.log
 EOSU

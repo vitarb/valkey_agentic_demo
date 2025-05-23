@@ -1,4 +1,4 @@
-import sys, types
+import os, sys, types
 
 class DummyMetric:
     def inc(self, *a, **k):
@@ -66,6 +66,9 @@ dummy_transformers.pipeline = lambda *a, **k: None
 
 
 def pytest_configure(config):
+    root = os.path.dirname(os.path.dirname(__file__))
+    if root not in sys.path:
+        sys.path.insert(0, root)
     sys.modules.setdefault("redis", dummy_redis)
     sys.modules.setdefault("redis.asyncio", dummy_asyncio)
     sys.modules.setdefault("redis.exceptions", dummy_exceptions)

@@ -73,7 +73,5 @@ def pytest_configure(config):
     sys.modules.setdefault("redis.asyncio", dummy_asyncio)
     sys.modules.setdefault("redis.exceptions", dummy_exceptions)
     sys.modules.setdefault("prometheus_client", dummy_prom)
-    sys.modules.setdefault("langgraph.graph", dummy_graph_mod)
-    sys.modules.setdefault("langchain_core.runnables", dummy_runnables)
     sys.modules.setdefault("transformers", dummy_transformers)
 

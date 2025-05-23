@@ -15,10 +15,10 @@ MY_IP=$(curl -s https://checkip.amazonaws.com)/32      # refreshed each run
 CMD=${1:-up}; [[ $CMD == up || $CMD == down ]] || { echo "Usage: $0 [up|down]"; exit 1; }
 
 # ───── helpers ──────────────────────────────────────────────────────────────
-latest_amzn2() {
-  aws ec2 describe-images --owners amazon \
-      --filters "Name=name,Values=amzn2-ami-hvm-*-gp2" "Name=architecture,Values=x86_64" \
-      --query 'sort_by(Images,&CreationDate)[-1].ImageId' --output text --region "$REGION"
+latest_gpu_amzn2() {
+  aws ssm get-parameters \
+      --names /aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id \
+      --query 'Parameters[0].Value' --output text --region "$REGION"
 }
 
 keypair_ensure() {
@@ -86,7 +86,7 @@ if [[ $CMD == up ]]; then
   if [[ -z $IID || $IID == "None" ]]; then
     keypair_ensure
     SG_ID=$(sg_ensure)
-    AMI=$(latest_amzn2)
+    AMI=$(latest_gpu_amzn2)
 
     echo "⤵  launching EC2 $INSTANCE_TYPE"
     IID=$(aws ec2 run-instances \
@@ -120,7 +120,6 @@ ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compo
 # NVIDIA runtime for GPU
 curl -fsSL https://nvidia.github.io/nvidia-docker/amzn2/nvidia-docker.repo \
  | tee /etc/yum.repos.d/nvidia-docker.repo
-yum -y install nvidia-driver-latest-dkms nvidia-container-toolkit
 systemctl restart docker
 usermod -aG docker ec2-user
 

@@ -12,8 +12,6 @@ import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
-from langgraph.graph import Graph
-from langchain_core.runnables import RunnableLambda
 
 # ---------------- config -----------------
 VALKEY   = os.getenv("VALKEY_URL", "redis://valkey:6379")
@@ -70,13 +68,10 @@ def summarise(batch):
         d["summary"] = s["summary_text"]
     return batch
 
-g = Graph()
-g.add_node("topic",   RunnableLambda(pick_topic))
-g.add_node("summary", RunnableLambda(summarise))
-g.add_edge("topic", "summary")
-g.set_entry_point("topic")
-g.set_finish_point("summary")
-CHAIN = g.compile()
+def enrich_docs(batch):
+    batch = pick_topic(batch)
+    batch = summarise(batch)
+    return batch
 
 # ---------------- main loop --------------
 async def main():
@@ -108,8 +103,8 @@ async def main():
             docs = [{"id":d["id"], "title":d["title"], "body":d["text"]}
                     for d in docs_raw]
 
-            # run batched graph
-            docs = CHAIN.invoke(docs)   # returns list of enriched docs
+            # enrich docs without langgraph
+            docs = enrich_docs(docs)
 
             pipe = r.pipeline()
             for d in docs:

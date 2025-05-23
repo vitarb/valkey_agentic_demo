@@ -5,6 +5,5 @@ transformers>=4.25,<4.47
 torch==2.2.1
 langchain-community>=0.2.0
 langchain-ollama>=0.1.0
-langgraph @ git+https://github.com/langchain-ai/langgraph.git@v0.0.30
 datasets>=2.18.0
 tqdm>=4.66.4

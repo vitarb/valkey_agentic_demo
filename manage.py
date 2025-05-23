@@ -16,17 +16,16 @@ PEM_FILE = pathlib.Path(f"{KEY_NAME}.pem")
 USER_DATA = r"""#!/bin/bash
 exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 set -eux
-# --- packages: newer Python 3.10 + docker -------------------------------------
-amazon-linux-extras enable python3.10 epel
-yum -y install python3.10 python3.10-devel git curl kernel-devel gcc
-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
-alternatives --install /usr/bin/pip3    pip3    /usr/bin/pip3.10    1
-alternatives --set python3 /usr/bin/python3.10
-alternatives --set pip3    /usr/bin/pip3.10
+# --- packages: Python 3.8 + docker -------------------------------------------
+amazon-linux-extras install -y python3.8 docker epel
+yum -y install python3.8-devel python3.8-pip git curl gcc kernel-devel
+alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
+alternatives --set       python3 /usr/bin/python3.8
+rm -f /usr/bin/pip3
+ln -s /usr/bin/pip3.8 /usr/bin/pip3
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
 
-amazon-linux-extras install -y docker
 systemctl start docker
 systemctl enable docker || true
 # Docker Compose v2 plugin
@@ -52,9 +51,9 @@ set -eux
 cd ~
 git clone --depth=1 https://github.com/vitarb/valkey_agentic_demo.git
 cd valkey_agentic_demo
-/usr/bin/python3.10 -m pip install -r requirements.txt
-/usr/bin/python3.10 tools/make_cc_csv.py 50000 data/news_sample.csv
-/usr/bin/python3.10 tools/bootstrap_grafana.py
+/usr/bin/python3.8 -m pip install -r requirements.txt
+/usr/bin/python3.8 tools/make_cc_csv.py 50000 data/news_sample.csv
+/usr/bin/python3.8 tools/bootstrap_grafana.py
 if ! grep -q 'runtime: nvidia' docker-compose.yml; then
     sed -i '/image: ollama\/ollama:latest/a\\    runtime: nvidia' docker-compose.yml
 fi

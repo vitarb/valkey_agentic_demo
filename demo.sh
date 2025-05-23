@@ -98,12 +98,16 @@ if [[ $CMD == up ]]; then
 #!/bin/bash
 exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 set -eux
-# --- packages: newer Python 3.11 + docker ------------------------------------------------
-amazon-linux-extras enable python3.11 epel
-yum -y install python3.11 python3.11-devel git docker
-alternatives --set python3 /usr/bin/python3.11
+# --- packages: Python 3.8 + docker -------------------------------------------
+amazon-linux-extras install -y python3.8 docker epel
+yum -y install python3.8-devel python3.8-pip git curl gcc kernel-devel
+alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
+alternatives --set       python3 /usr/bin/python3.8
+rm -f /usr/bin/pip3
+ln -s /usr/bin/pip3.8 /usr/bin/pip3
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
+
 
 systemctl enable --now docker
 # Docker Compose v2 plugin

@@ -38,10 +38,6 @@ ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compo
 # NVIDIA runtime for GPU
 curl -fsSL https://nvidia.github.io/nvidia-docker/amzn2/nvidia-docker.repo \
  | tee /etc/yum.repos.d/nvidia-docker.repo
-yum -y install nvidia-driver-latest-dkms nvidia-container-toolkit
-if ! grep -q nvidia /etc/docker/daemon.json 2>/dev/null; then
-    nvidia-ctk runtime configure --runtime=docker
-fi
 systemctl restart docker
 usermod -aG docker ec2-user
 
@@ -92,17 +88,12 @@ def _public_ip(iid: str, region: str, profile: Optional[str]) -> str:
     return resp['Reservations'][0]['Instances'][0].get('PublicIpAddress', '')
 
 
-def _latest_amzn2(region: str, profile: Optional[str]) -> str:
-    ec2 = _boto3_client('ec2', region, profile)
-    resp = ec2.describe_images(
-        Owners=['amazon'],
-        Filters=[
-            {'Name': 'name', 'Values': ['amzn2-ami-hvm-*-gp2']},
-            {'Name': 'architecture', 'Values': ['x86_64']},
-        ]
+def _latest_gpu_amzn2(region: str, profile: Optional[str]) -> str:
+    ssm = _boto3_client('ssm', region, profile)
+    param = ssm.get_parameter(
+        Name='/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id'
     )
-    imgs = sorted(resp['Images'], key=lambda i: i['CreationDate'])
-    return imgs[-1]['ImageId']
+    return param['Parameter']['Value']
 
 
 def _ensure_key_pair(region: str, profile: Optional[str]):
@@ -157,7 +148,7 @@ def _ensure_security_group(region: str, profile: Optional[str], my_ip: str, use_
 
 def _run_instance(region: str, profile: Optional[str], instance_type: str, spot: bool, sg_id: str) -> str:
     ec2 = _boto3_client('ec2', region, profile)
-    ami = _latest_amzn2(region, profile)
+    ami = _latest_gpu_amzn2(region, profile)
     print(f"⤵  launching EC2 {instance_type}")
     opts = {
         'ImageId': ami,

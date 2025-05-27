@@ -8,6 +8,10 @@ Fast-path enrichment (CPU-friendly)
 """
 
 import os, asyncio, json
+try:
+    import torch
+except Exception:  # pragma: no cover - torch may be missing in tests
+    torch = None
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
@@ -33,15 +37,23 @@ async def rconn():
             await asyncio.sleep(1)
 
 # ---------------- tiny models ------------
+CUDA = 0 if (torch and torch.cuda.is_available()) else -1
 classifier = pipeline(
     "zero-shot-classification",
     model="typeform/distilbert-base-uncased-mnli",
-    device=-1,
+    device=CUDA,
 )
+summariser_args = {
+    "device": CUDA,
+}
+if torch:
+    summariser_args["torch_dtype"] = (
+        torch.float16 if CUDA == 0 else torch.float32
+    )
 summariser = pipeline(
     "summarization",
-    model="sshleifer/distilbart-cnn-12-6",
-    device=-1,
+    model="philschmid/bart-tiny-cnn-6-6",
+    **summariser_args,
 )
 
 # ---------------- metrics ----------------

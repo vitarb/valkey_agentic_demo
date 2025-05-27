@@ -2,6 +2,16 @@
 
 This repository contains a small end‑to‑end demo built around [Valkey](https://valkey.io) that showcases an asynchronous agentic pipeline.  Several microservices communicate via Valkey streams and publish metrics for Grafana via Prometheus.
 
+```
+replay → enrich → topic:<T> ──► fanout ──► feed:<uid>
+                   │
+                   └──► doc:<id>
+```
+
+The replay service publishes raw news to `news_raw`. The enrich agent classifies
+and summarises those articles, caching each under `doc:<id>` and fan-out streams
+under `topic:<T>`. The fanout service then distributes items to per-user feeds.
+
 ## Running the demo
 
 The easiest way to spin everything up is with Docker Compose.  Make sure Docker and Python 3.8+ are installed, then run:

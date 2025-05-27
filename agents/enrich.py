@@ -8,6 +8,7 @@ service can deliver it to user feeds.
 Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
 but you can swap it out for a simpler heuristic if desired.
 """
+from __future__ import annotations
 import os
 import asyncio
 from typing import List, Dict
@@ -95,7 +96,7 @@ async def main() -> None:
                 stream = f"topic:{d['topic']}"
                 pipe.xadd(stream, {"id": d["id"], "title": d["title"]})
                 pipe.xtrim(stream, maxlen=10_000)
-            pipe.execute()
+            await pipe.execute()
 
             # Acknowledge and record metrics -----------------------------------------
             await r.xack(SOURCE, grp, *mids)

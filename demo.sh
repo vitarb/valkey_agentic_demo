@@ -132,8 +132,9 @@ cd valkey_agentic_demo
 python3 -m pip install -r requirements.txt
 python3 tools/make_cc_csv.py 50000 data/news_sample.csv
 python3 tools/bootstrap_grafana.py
-docker-compose pull 2>&1 | tee docker-compose.log
-docker-compose up -d   2>&1 | tee -a docker-compose.log
+export PATH=$PATH:/usr/local/bin
+/usr/local/bin/docker-compose pull 2>&1 | tee docker-compose.log
+/usr/local/bin/docker-compose up -d   2>&1 | tee -a docker-compose.log
 EOSU
 EOF
        ) --query 'Instances[0].InstanceId' --output text --region "$REGION")

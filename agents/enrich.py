@@ -19,6 +19,7 @@ from transformers import pipeline
 
 # ---------------- config -----------------
 VALKEY   = os.getenv("VALKEY_URL", "redis://valkey:6379")
+SOURCE   = "news_raw"
 TOPICS   = ["politics","business","technology","sports","health",
             "climate","science","education","entertainment","finance"]
 BATCH    = int(os.getenv("ENRICH_BATCH", "8"))      # docs per batch
@@ -91,7 +92,7 @@ async def main():
     r   = await rconn()
     grp = "cg_enrich"; consumer = "en-1"
     try:
-        await r.xgroup_create("news_raw", grp, id="0", mkstream=True)
+        await r.xgroup_create(SOURCE, grp, id="0", mkstream=True)
     except redis.ResponseError:
         pass
 
@@ -99,7 +100,7 @@ async def main():
 
     while True:
         try:
-            msgs = await r.xreadgroup(grp, consumer, {"news_raw":">"},
+            msgs = await r.xreadgroup(grp, consumer, {SOURCE:">"},
                                       count=BATCH, block=500)
             if msgs:
                 buffer.extend(msgs[0][1])
@@ -128,9 +129,9 @@ async def main():
             pipe.execute()
 
             # ack after successful write
-            await r.xack("news_raw", grp, *mids)
+            await r.xack(SOURCE, grp, *mids)
             IN.inc(len(docs)); OUT.inc(len(docs))
-            NEWS_RAW_LEN.set(await r.xlen("news_raw"))
+            NEWS_RAW_LEN.set(await r.xlen(SOURCE))
 
         except RedisConnError:
             r = await rconn()

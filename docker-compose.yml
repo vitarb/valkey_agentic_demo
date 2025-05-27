@@ -29,7 +29,10 @@ services:
   enrich:
     <<: *base
     command: python agents/enrich.py
-    environment: [OLLAMA_HOST=http://ollama:11434]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_HOST=http://ollama:11434
     depends_on: [valkey, prometheus, ollama]
 
   fanout:

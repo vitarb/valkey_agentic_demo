@@ -40,7 +40,7 @@ classifier = pipeline(
 )
 summariser = pipeline(
     "summarization",
-    model="philschmid/bart-tiny-cnn-6-6",
+    model="sshleifer/distilbart-cnn-12-6",
     device=-1,
 )
 

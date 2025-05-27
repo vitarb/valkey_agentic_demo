@@ -9,6 +9,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    runtime: nvidia
     ports: ["11434:11434"]
 
   prometheus:

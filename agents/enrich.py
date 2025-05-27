@@ -1,34 +1,34 @@
 """
-Fast-path enrichment (CPU-friendly)
+Enrichment -- topic classification only
+───────────────────────────────────────
+Reads raw articles from `news_raw`, assigns a single topic and publishes the
+article ID + title to the corresponding `topic:<T>` stream so that the fan-out
+service can deliver it to user feeds.
 
-• Tiny models
-• Hard truncation
-• Batched inference (8 docs)
-• Sentiment step removed for now
+Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
+but you can swap it out for a simpler heuristic if desired.
 """
+import os
+import asyncio
+from typing import List, Dict
 
-import os, asyncio, json
-try:
-    import torch
-except Exception:  # pragma: no cover - torch may be missing in tests
-    torch = None
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
 
-# ---------------- config -----------------
-VALKEY   = os.getenv("VALKEY_URL", "redis://valkey:6379")
-SOURCE   = "news_raw"
-TOPICS   = ["politics","business","technology","sports","health",
-            "climate","science","education","entertainment","finance"]
-BATCH    = int(os.getenv("ENRICH_BATCH", "8"))      # docs per batch
-TXT_CLF  = 512                                      # chars fed to classifier
-TXT_SUM  = 256                                      # chars fed to summariser
-SUM_LEN  = 40                                       # max summary tokens
+# ────────── Configuration ─────────────────────────────────────────
+VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
+SOURCE = "news_raw"
+TOPICS = [
+    "politics", "business", "technology", "sports", "health",
+    "climate", "science", "education", "entertainment", "finance",
+]
+BATCH = int(os.getenv("ENRICH_BATCH", "16"))   # articles per batch
+TXT_CLF = 512                                  # characters fed to classifier
 
-# ---------------- redis helper -----------
-async def rconn():
+# ────────── Lazy Redis connection helper ──────────────────────────
+async def rconn() -> redis.Redis:
     while True:
         try:
             r = await redis.from_url(VALKEY, decode_responses=True)
@@ -37,103 +37,74 @@ async def rconn():
         except Exception:
             await asyncio.sleep(1)
 
-# ---------------- tiny models ------------
-CUDA = 0 if (torch and torch.cuda.is_available()) else -1
+# ────────── Lightweight zero-shot classifier ──────────────────────
 classifier = pipeline(
     "zero-shot-classification",
     model="typeform/distilbert-base-uncased-mnli",
-    device=CUDA,
-)
-summariser_args = {
-    "device": CUDA,
-}
-if torch:
-    summariser_args["torch_dtype"] = (
-        torch.float16 if CUDA == 0 else torch.float32
-    )
-summariser = pipeline(
-    "summarization",
-    model="philschmid/bart-tiny-cnn-6-6",
-    **summariser_args,
+    device=-1,                 # CPU only (change to 0 for CUDA)
 )
 
-# ---------------- metrics ----------------
-IN   = Counter("enrich_in_total",  "")
-OUT  = Counter("enrich_out_total", "")
-CLS_LAT = Histogram("classifier_latency_seconds", "")
-SUM_LAT = Histogram("summariser_latency_seconds", "")
-NEWS_RAW_LEN = Gauge("news_raw_len", "Length of news_raw stream")
+# ────────── Metrics ───────────────────────────────────────────────
+IN_MSG  = Counter("enrich_in_total",  "Raw messages consumed")
+OUT_MSG = Counter("enrich_out_total", "Messages routed to topic streams")
+LAT     = Histogram("enrich_classifier_latency_seconds", "Classification latency")
+BACKLOG = Gauge("news_raw_len", "Length of news_raw stream")
 
-# ---------------- graph steps ------------
-def pick_topic(batch):
-    with CLS_LAT.time():
-        texts = [d["title"] + " " + d["body"][:TXT_CLF] for d in batch]
-        res   = classifier(texts, TOPICS, multi_label=False)
-    for d, r in zip(batch, res):
-        d["topic"] = r["labels"][0]
+# ────────── Helper ────────────────────────────────────────────────
+def classify(batch: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Add a 'topic' field to each dict in *batch*."""
+    texts = [d["title"] + " " + d["body"][:TXT_CLF] for d in batch]
+    with LAT.time():
+        results = classifier(texts, TOPICS, multi_label=False)
+    for doc, res in zip(batch, results):
+        doc["topic"] = res["labels"][0]
     return batch
 
-def summarise(batch):
-    with SUM_LAT.time():
-        texts = [d["body"][:TXT_SUM] for d in batch]
-        outs  = summariser(texts, max_length=SUM_LEN, truncation=True)
-    for d, s in zip(batch, outs):
-        d["summary"] = s["summary_text"]
-    return batch
-
-def enrich_docs(batch):
-    batch = pick_topic(batch)
-    batch = summarise(batch)
-    return batch
-
-# ---------------- main loop --------------
-async def main():
+# ────────── Main loop ─────────────────────────────────────────────
+async def main() -> None:
     start_http_server(9110)
-    r   = await rconn()
-    grp = "cg_enrich"; consumer = "en-1"
+    r = await rconn()
+
+    grp, consumer = "cg_enrich", "enrich-1"
     try:
         await r.xgroup_create(SOURCE, grp, id="0", mkstream=True)
     except redis.ResponseError:
-        pass
+        pass  # group already exists
 
-    buffer = []              # holds (mid, fields) until we reach BATCH
+    buffer: List = []
 
     while True:
         try:
-            msgs = await r.xreadgroup(grp, consumer, {SOURCE:">"},
-                                      count=BATCH, block=500)
+            msgs = await r.xreadgroup(grp, consumer, {SOURCE: ">"}, count=BATCH, block=500)
             if msgs:
                 buffer.extend(msgs[0][1])
 
             if len(buffer) < BATCH:
                 continue
 
-            # split buffer
+            # Split & map Redis fields to plain dicts ---------------------------------
             batch_slice, buffer = buffer[:BATCH], buffer[BATCH:]
-            mids, docs_raw = zip(*batch_slice)
+            mids, raw_docs = zip(*batch_slice)
+            docs = [{"id": d["id"], "title": d["title"], "body": d["text"]} for d in raw_docs]
 
-            # map redis fields → plain dict
-            docs = [{"id":d["id"], "title":d["title"], "body":d["text"]}
-                    for d in docs_raw]
-
-            # enrich docs without langgraph
-            docs = enrich_docs(docs)
+            # Classify & publish ------------------------------------------------------
+            docs = classify(docs)
 
             pipe = r.pipeline()
             for d in docs:
-                key = f"doc:{d['id']}"
-                pipe.json().set(key,"$",d,nx=True).expire(key,86400)
-                pipe.xadd(f"topic:{d['topic']}", {"id":d["id"],
-                                                  "summary":d["summary"]})
-                pipe.xtrim(f"topic:{d['topic']}", maxlen=10000)
+                stream = f"topic:{d['topic']}"
+                pipe.xadd(stream, {"id": d["id"], "title": d["title"]})
+                pipe.xtrim(stream, maxlen=10_000)
             pipe.execute()
 
-            # ack after successful write
+            # Acknowledge and record metrics -----------------------------------------
             await r.xack(SOURCE, grp, *mids)
-            IN.inc(len(docs)); OUT.inc(len(docs))
-            NEWS_RAW_LEN.set(await r.xlen(SOURCE))
+            IN_MSG.inc(len(docs))
+            OUT_MSG.inc(len(docs))
+            BACKLOG.set(await r.xlen(SOURCE))
 
         except RedisConnError:
+            # Valkey went away – reconnect
             r = await rconn()
 
 if __name__ == "__main__":

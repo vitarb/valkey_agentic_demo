@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """Create compact Grafana dashboard & datasource (Python ≤3.7 compatible)."""
-import json, yaml, pathlib
+import json, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-for sub in ("grafana/provisioning/datasources",
-            "grafana/provisioning/dashboards",
-            "grafana/dashboards"):
+for sub in (
+    "grafana/provisioning/datasources",
+    "grafana/provisioning/dashboards",
+    "grafana/dashboards",
+):
     (ROOT / sub).mkdir(parents=True, exist_ok=True)
 
 # datasource ------------------------------------------------------
-(ROOT/"grafana/provisioning/datasources/prom.yaml").write_text(yaml.dump({
-    "apiVersion": 1,
-    "datasources": [{
-        "uid": "prom",
-        "name": "Prometheus",
-        "type": "prometheus",
-        "url": "http://prometheus:9090",
-        "isDefault": False
-    }]
-}, sort_keys=False))
+DATA_SRC = (
+    "apiVersion: 1\n"
+    "datasources:\n"
+    "- uid: prom\n"
+    "  name: Prometheus\n"
+    "  type: prometheus\n"
+    "  url: http://prometheus:9090\n"
+    "  isDefault: false\n"
+)
+(ROOT / "grafana/provisioning/datasources/prom.yaml").write_text(DATA_SRC)
 
 # helper ----------------------------------------------------------
 def panel(title, exprs, row, col):
@@ -43,10 +45,12 @@ panels = [
     panel("Fan-out backlog", ["topic_stream_len"], 1, 1),
     panel("Fan-out msgs / s", ["rate(fan_out_total[1m])"], 2, 0),
     panel("Reader pops / s", ["rate(reader_pops_total[1m])"], 2, 1),
-    panel("Classifier p95 s",
-          ["histogram_quantile(0.95, rate(classifier_latency_seconds_bucket[2m]))"], 3, 0),
-    panel("Summariser p95 s",
-          ["histogram_quantile(0.95, rate(summariser_latency_seconds_bucket[2m]))"], 3, 1),
+    panel(
+        "Summariser p95 s",
+        ["histogram_quantile(0.95, rate(summariser_latency_seconds_bucket[2m]))"],
+        3,
+        0,
+    ),
     panel("Valkey ops / s", ["rate(redis_commands_processed_total[1m])"], 4, 0),
     panel("Valkey mem MB", ["redis_memory_used_bytes/1024/1024"], 4, 1),
 ]
@@ -61,15 +65,16 @@ dashboard = {
 }
 (ROOT/"grafana/dashboards/agent_overview.json").write_text(json.dumps(dashboard, indent=2))
 
-(ROOT/"grafana/provisioning/dashboards/dash.yaml").write_text(yaml.dump({
-    "apiVersion": 1,
-    "providers": [{
-        "name": "Agentic Demo",
-        "folder": "Agentic Demo",
-        "type": "file",
-        "options": {"path": "/etc/grafana/dashboards"}
-    }]
-}, sort_keys=False))
+PROV = (
+    "apiVersion: 1\n"
+    "providers:\n"
+    "- name: Agentic Demo\n"
+    "  folder: Agentic Demo\n"
+    "  type: file\n"
+    "  options:\n"
+    "    path: /etc/grafana/dashboards\n"
+)
+(ROOT / "grafana/provisioning/dashboards/dash.yaml").write_text(PROV)
 
 print("✓ Grafana provisioning + dashboard written")
 

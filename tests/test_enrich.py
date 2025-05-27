@@ -52,14 +52,8 @@ async def test_rconn_retry(monkeypatch):
     assert isinstance(conn, Stub)
     assert calls["n"] >= 2
 
-def test_pick_topic(monkeypatch):
+def test_classify(monkeypatch):
     mod = load_module(monkeypatch)
     batch = [{"title": "t", "body": "b"}]
-    out = mod.pick_topic(batch)
+    out = mod.classify(batch)
     assert out[0]["topic"] == "tech"
-
-def test_summarise(monkeypatch):
-    mod = load_module(monkeypatch)
-    batch = [{"body": "b"}]
-    out = mod.summarise(batch)
-    assert out[0]["summary"] == "sum"

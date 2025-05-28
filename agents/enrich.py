@@ -19,7 +19,7 @@ from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
 
 # ────────── Configuration ─────────────────────────────────────────
-VALKEY = os.getenv("VALKEY_URL", "redis://localhost:6379")
+VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 SOURCE = "news_raw"
 TOPICS = [
     "politics", "business", "technology", "sports", "health",

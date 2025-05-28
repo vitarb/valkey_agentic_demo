@@ -8,9 +8,9 @@ replay → enrich → topic:<T> ──► fanout ──► feed:<uid>
                    └──► doc:<id>
 ```
 
-The replay service publishes raw news to `news_raw`. The enrich agent classifies
-and summarises those articles, caching each under `doc:<id>` and fan-out streams
-under `topic:<T>`. The fanout service then distributes items to per-user feeds.
+The replay service publishes raw news to `news_raw`. The enrich agent processes
+those articles, caching each under `doc:<id>` and fan-out streams under
+`topic:<T>`. The fanout service then distributes items to per-user feeds.
 
 ## Running the demo
 

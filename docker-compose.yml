@@ -6,6 +6,8 @@ services:
   base: &base
     build: .
     volumes: ["./data:/app/data:ro"]
+    environment:
+      - VALKEY_URL=redis://valkey:6379
 
   ollama:
     image: ollama/ollama:latest

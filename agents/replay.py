@@ -2,7 +2,7 @@ import os, csv, asyncio, redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, start_http_server
 
-VALKEY = os.getenv("VALKEY_URL", "redis://localhost:6379")
+VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 CSV    = os.getenv("REPLAY_FILE", "data/news_sample.csv")
 RPS    = float(os.getenv("REPLAY_RATE", "250"))
 

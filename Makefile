@@ -1,11 +1,10 @@
-.PHONY: up down clear logs data test
+.PHONY: dev down clear logs data test
 
 SERVICES = enrich fanout reader replay dashboard grafana
 SEED     = seed
 
-up:
+dev:
 	docker compose up --build -d
-	docker compose --profile $(SEED) up --build -d $(SEED)
 
 down:
 	docker compose down

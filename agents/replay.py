@@ -17,10 +17,11 @@ async def redis_ready():
 
 async def main():
     start_http_server(9114)           # expose producer counter
+    csv_path = os.getenv("REPLAY_FILE", CSV)
     try:
-        fp = open(CSV, newline="", encoding="utf-8")
+        fp = open(csv_path, newline="", encoding="utf-8")
     except FileNotFoundError:
-        raise SystemExit(f"[replay] '{CSV}' missing in container")
+        raise SystemExit(f"[replay] '{csv_path}' missing in container")
 
     reader = csv.DictReader(fp)
     r = await redis_ready()

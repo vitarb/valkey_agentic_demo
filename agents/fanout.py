@@ -6,7 +6,7 @@ from builtins import open as builtin_open
 open = builtin_open
 from prometheus_client import Counter, Gauge, start_http_server
 
-VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
+VALKEY = os.getenv("VALKEY_URL", "redis://localhost:6379")
 TOPICS = ["politics","business","technology","sports","health",
           "climate","science","education","entertainment","finance"]
 MAX_LEN = int(os.getenv("FEED_LEN", "100"))

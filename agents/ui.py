@@ -6,7 +6,7 @@ import time
 import streamlit as st
 import redis.asyncio as redis
 
-VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
+VALKEY_URL = os.getenv("VALKEY_URL", "redis://localhost:6379")
 FEED_LEN = int(os.getenv("FEED_LEN", "100"))
 
 async def rconn():

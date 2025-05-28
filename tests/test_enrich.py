@@ -13,8 +13,6 @@ def load_module(monkeypatch):
     def fake_pipeline(task, *a, **kw):
         if task == "zero-shot-classification":
             return DummyPipe({"labels": ["tech"]})
-        elif task == "summarization":
-            return DummyPipe({"summary_text": "sum"})
         return DummyPipe({})
     monkeypatch.setattr("transformers.pipeline", fake_pipeline)
     sys.modules.pop("agents.enrich", None)

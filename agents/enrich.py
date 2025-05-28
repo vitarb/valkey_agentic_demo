@@ -5,6 +5,9 @@ Reads raw articles from `news_raw`, assigns a single topic and publishes the
 article ID + title to the corresponding `topic:<T>` stream so that the fan-out
 service can deliver it to user feeds.
 
+Environment variables:
+    ENRICH_BATCH – articles processed per batch (default: 32)
+
 Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
 but you can swap it out for a simpler heuristic if desired.
 """
@@ -25,7 +28,7 @@ TOPICS = [
     "politics", "business", "technology", "sports", "health",
     "climate", "science", "education", "entertainment", "finance",
 ]
-BATCH = int(os.getenv("ENRICH_BATCH", "16"))   # articles per batch
+BATCH = int(os.getenv("ENRICH_BATCH", "32"))   # articles per batch
 TXT_CLF = 512                                  # characters fed to classifier
 
 # ────────── Lazy Redis connection helper ──────────────────────────

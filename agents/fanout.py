@@ -1,5 +1,9 @@
 import os, json, asyncio, redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
+from builtins import open as builtin_open
+
+# alias built-in open so tests can monkeypatch this module's open()
+open = builtin_open
 from prometheus_client import Counter, Gauge, start_http_server
 
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")

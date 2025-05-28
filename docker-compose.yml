@@ -40,7 +40,6 @@ services:
   seed:
     <<: *base
     command: python agents/user_seeder.py
-    profiles: ["seed"]
     depends_on: [valkey]
 
   reader:

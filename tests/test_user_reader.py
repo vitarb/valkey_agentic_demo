@@ -11,6 +11,8 @@ class DummyRedis:
         return "5"
     async def brpop(self, key, timeout=1):
         self.popped += 1
+    async def llen(self, key):
+        return 0
 
 
 def load_mod(monkeypatch):

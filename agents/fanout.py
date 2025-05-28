@@ -14,6 +14,8 @@ MAX_LEN = int(os.getenv("FEED_LEN", "100"))
 IN  = Counter("fan_in_total",  "")
 OUT = Counter("fan_out_total", "")
 Q_LEN = Gauge("topic_stream_len", "Length of each topic stream", ["topic"])
+FEED_PUSH = Counter("feed_push_total", "")
+FEED_LEN = Gauge("feed_len", "", ["uid"])
 
 # -------- helpers --------------------------------------------------
 async def rconn():
@@ -49,9 +51,19 @@ async def main():
                 if not msgs:
                     continue
                 for mid, f in msgs[0][1]:
+                    users = await r.zrange(f"user:topic:{t}", 0, -1)
                     await r.evalsha(sha, 0, f["id"], t, json.dumps(f), MAX_LEN)
                     await r.xack(stream, grp, mid)
                     IN.inc(); OUT.inc()
+
+                    if users:
+                        pipe = r.pipeline()
+                        for uid in users:
+                            pipe.llen(f"feed:{uid}")
+                        lengths = await pipe.execute()
+                        for uid, ln in zip(users, lengths):
+                            FEED_PUSH.inc()
+                            FEED_LEN.labels(uid=uid).set(ln)
 
                 Q_LEN.labels(topic=t).set(await r.xlen(stream))
             await asyncio.sleep(0.05)

@@ -51,7 +51,7 @@ cd valkey_agentic_demo
 /usr/bin/python3.8 tools/make_cc_csv.py 50000 data/news_sample.csv
 /usr/bin/python3.8 tools/bootstrap_grafana.py
 export PATH=$PATH:/usr/local/bin
-/usr/local/bin/docker-compose pull 2>&1 | tee docker-compose.log
+/usr/local/bin/docker-compose build --build-arg USE_CUDA=1 2>&1 | tee docker-compose.log
 /usr/local/bin/docker-compose up -d   2>&1 | tee -a docker-compose.log
 EOSU
 """

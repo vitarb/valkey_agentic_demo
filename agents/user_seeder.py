@@ -24,7 +24,8 @@ USERS = Counter("seed_users_total","")
 async def main():
     start_http_server(9113)
     r   = await rconn()
-    uid = 0
+    uid   = 0
+    total = 0
     while True:
         try:
             ints = random.sample(TOPICS, k=random.randint(2,4))
@@ -32,6 +33,9 @@ async def main():
             for t in ints: await r.zadd(f"user:topic:{t}",{uid:1})
             await r.set("latest_uid", uid)
             USERS.inc(); uid += 1
+            total += 1
+            if total % 100 == 0:
+                print(f"[+] {total} users seeded (latest uid = {uid-1})")
             await asyncio.sleep(1 / RATE)
         except RedisConnError as e:
             print("[seeder] reconnect:", e); r = await rconn()

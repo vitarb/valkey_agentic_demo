@@ -22,13 +22,22 @@ POP = Counter("reader_pops_total","")
 async def main():
     start_http_server(9112)
     r = await rconn()
+    checked = 0
+    last_debug = 0.0
     while True:
         try:
             lu = int(await r.get("latest_uid") or 0)
             if lu:
                 uid = random.randint(0, lu)
-                await r.brpop(f"feed:{uid}", timeout=1)
-                POP.inc()
+                item = await r.brpop(f"feed:{uid}", timeout=1)
+                if item is None:
+                    now = time.time()
+                    if now - last_debug >= 60:
+                        print("[reader] no items for uid %s (total %d checked)" % (uid, checked))
+                        last_debug = now
+                else:
+                    POP.inc()
+                checked += 1
             await asyncio.sleep(0.5)
         except RedisConnError:
             r = await rconn()

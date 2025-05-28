@@ -1,9 +1,13 @@
 import os
 import json
 import time
+import random
 
 import streamlit as st
 import redis
+
+# Backward-compatible rerun function
+rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
 FEED_LEN = int(os.getenv("FEED_LEN", "100"))
@@ -42,9 +46,16 @@ st.set_page_config(page_title="User Timeline", layout="centered")
 
 r = rconn()
 lu = latest_uid(r)
-uid = st.number_input("User ID", value=lu, step=1, min_value=0)
+if lu == 0:
+    st.warning("Seeder not running…")
+uid = st.number_input("User ID", value=lu, step=1, min_value=0, key="uid")
 
 refresh = st.button("Refresh")
+if lu > 0:
+    random_btn = st.button("Random user")
+    if random_btn:
+        st.session_state.uid = random.randint(0, lu)
+        rerun()
 
 interests, feed = user_data(r, uid)
 
@@ -76,7 +87,7 @@ else:
     st.info("No articles yet – try another uid or wait a bit…")
 
 if refresh:
-    st.experimental_rerun()
+    rerun()
 else:
     time.sleep(5)
-    st.experimental_rerun()
+    rerun()

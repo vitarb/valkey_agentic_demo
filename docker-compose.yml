@@ -9,7 +9,6 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    runtime: nvidia
     ports: ["11434:11434"]
 
   prometheus:
@@ -29,7 +28,6 @@ services:
   enrich:
     <<: *base
     command: python agents/enrich.py
-    runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - OLLAMA_HOST=http://ollama:11434

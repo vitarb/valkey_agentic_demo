@@ -51,6 +51,7 @@ panels = [
         3,
         0,
     ),
+    panel("Feeds backlog", ["feed_backlog"], 3, 1),
     panel("Valkey ops / s", ["rate(redis_commands_processed_total[1m])"], 4, 0),
     panel("Valkey mem MB", ["redis_memory_used_bytes/1024/1024"], 4, 1),
 ]

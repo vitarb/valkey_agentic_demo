@@ -1,7 +1,7 @@
 import os, asyncio, time, json, random, warnings
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
 
@@ -18,6 +18,8 @@ async def rconn(retries=30, delay=1.0):
     raise RuntimeError("Valkey never became available")
 
 POP = Counter("reader_pops_total","")
+POP_LAT = Histogram("reader_pop_latency_seconds", "")
+FEED_LEN = Gauge("feed_len", "", ["uid"])
 
 async def main():
     start_http_server(9112)
@@ -29,7 +31,10 @@ async def main():
             lu = int(await r.get("latest_uid") or 0)
             if lu:
                 uid = random.randint(0, lu)
-                item = await r.brpop(f"feed:{uid}", timeout=1)
+                with POP_LAT.time():
+                    item = await r.brpop(f"feed:{uid}", timeout=1)
+                length_after = await r.llen(f"feed:{uid}")
+                FEED_LEN.labels(uid=uid).set(length_after)
                 if item is None:
                     now = time.time()
                     if now - last_debug >= 60:

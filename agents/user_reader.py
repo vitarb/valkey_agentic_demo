@@ -3,7 +3,7 @@ import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, start_http_server
 
-VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
+VALKEY_URL = os.getenv("VALKEY_URL", "redis://localhost:6379")
 
 async def rconn(retries=30, delay=1.0):
     "Retry until Valkey answers PING."

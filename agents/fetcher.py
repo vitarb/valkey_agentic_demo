@@ -2,7 +2,7 @@ import asyncio, json, os, random, time
 import redis.asyncio as redis
 from prometheus_client import Counter, Histogram, start_http_server
 
-VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
+VALKEY_URL = os.getenv("VALKEY_URL", "redis://localhost:6379")
 REDIS = None
 async def rconn():
     global REDIS

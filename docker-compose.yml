@@ -9,9 +9,6 @@ services:
     environment:
       - VALKEY_URL=redis://valkey:6379
 
-  ollama:
-    image: ollama/ollama:latest
-    ports: ["11434:11434"]
 
   prometheus:
     image: prom/prometheus:latest
@@ -32,8 +29,7 @@ services:
     command: python agents/enrich.py
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - OLLAMA_HOST=http://ollama:11434
-    depends_on: [valkey, prometheus, ollama]
+    depends_on: [valkey, prometheus]
 
   fanout:
     <<: *base

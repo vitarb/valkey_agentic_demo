@@ -1,33 +1,32 @@
 import os
-import asyncio
 import json
 import time
 
 import streamlit as st
-import redis.asyncio as redis
+import redis
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
 FEED_LEN = int(os.getenv("FEED_LEN", "100"))
 
-async def rconn():
+def rconn():
     """Return a connected Redis client."""
     while True:
         try:
-            r = await redis.from_url(VALKEY_URL, decode_responses=True)
-            await r.ping()
+            r = redis.from_url(VALKEY_URL, decode_responses=True)
+            r.ping()
             return r
         except Exception:
-            await asyncio.sleep(1)
+            time.sleep(1)
 
-async def latest_uid(r: redis.Redis) -> int:
-    val = await r.get("latest_uid")
+def latest_uid(r: redis.Redis) -> int:
+    val = r.get("latest_uid")
     return int(val) if val is not None else 0
 
-async def user_data(r: redis.Redis, uid: int):
+def user_data(r: redis.Redis, uid: int):
     pipe = r.pipeline()
     pipe.json().get(f"user:{uid}")
     pipe.lrange(f"feed:{uid}", 0, FEED_LEN - 1)
-    user_json, feed_raw = await pipe.execute()
+    user_json, feed_raw = pipe.execute()
     interests = user_json.get("interests", []) if isinstance(user_json, dict) else []
     items = []
     for raw in feed_raw:
@@ -41,13 +40,13 @@ async def user_data(r: redis.Redis, uid: int):
 
 st.set_page_config(page_title="User Timeline", layout="centered")
 
-r = asyncio.run(rconn())
-lu = asyncio.run(latest_uid(r))
+r = rconn()
+lu = latest_uid(r)
 uid = st.number_input("User ID", value=lu, step=1, min_value=0)
 
 refresh = st.button("Refresh")
 
-interests, feed = asyncio.run(user_data(r, uid))
+interests, feed = user_data(r, uid)
 
 st.subheader("Interests")
 if interests:

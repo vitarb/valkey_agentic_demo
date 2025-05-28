@@ -39,7 +39,7 @@ services:
     <<: *base
     command: python agents/fanout.py
     depends_on: [valkey, prometheus]
-    deploy: {replicas: 3}
+    deploy: {replicas: 1}
 
   seed:
     <<: *base

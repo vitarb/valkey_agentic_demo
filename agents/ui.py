@@ -47,7 +47,7 @@ st.markdown(
     """
     <style>
     .tag-int {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
-    .tag-topic {background:#eee;border-radius:4px;padding:2px 6px;margin-right:4px}
+    .tag-topic {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
     </style>
     """,
     unsafe_allow_html=True,

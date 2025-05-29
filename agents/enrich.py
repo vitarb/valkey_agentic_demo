@@ -6,7 +6,8 @@ article ID + title to the corresponding `topic:<T>` stream so that the fan-out
 service can deliver it to user feeds.
 
 Environment variables:
-    ENRICH_BATCH – articles processed per batch (default: 32)
+    ENRICH_BATCH     – articles processed per batch (default: 32)
+    NEWS_RAW_MAXLEN  – max items to retain in news_raw (default: 5000)
 
 Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
 but you can swap it out for a simpler heuristic if desired.
@@ -30,6 +31,7 @@ TOPICS = [
     "climate", "science", "education", "entertainment", "finance",
 ]
 BATCH = int(os.getenv("ENRICH_BATCH", "32"))   # articles per batch
+NEWS_RAW_MAXLEN = int(os.getenv("NEWS_RAW_MAXLEN", "5000"))
 TXT_CLF = 512                                  # characters fed to classifier
 
 # ────────── Lazy Redis connection helper ──────────────────────────
@@ -54,6 +56,7 @@ IN_MSG  = Counter("enrich_in_total",  "Raw messages consumed")
 OUT_MSG = Counter("enrich_out_total", "Messages routed to topic streams")
 LAT     = Histogram("enrich_classifier_latency_seconds", "Classification latency")
 BACKLOG = Gauge("news_raw_len", "Length of news_raw stream")
+TRIM_OPS = Gauge("news_raw_trim_ops_total", "Trimming operations on news_raw")
 
 # ────────── Helper ────────────────────────────────────────────────
 def classify(batch: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -121,6 +124,8 @@ async def main() -> None:
 
             # Acknowledge and record metrics -----------------------------------------
             await r.xack(SOURCE, grp, *mids)
+            await r.xtrim(SOURCE, maxlen=NEWS_RAW_MAXLEN)
+            TRIM_OPS.inc()
             IN_MSG.inc(len(docs))
             OUT_MSG.inc(len(docs))
             BACKLOG.set(await r.xlen(SOURCE))

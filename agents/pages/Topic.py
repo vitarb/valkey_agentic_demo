@@ -3,7 +3,13 @@ import json
 import time
 
 import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover - fallback for tests without dependency
+    def st_autorefresh(*a, **k):
+        pass
 import redis
+import pathlib
 
 rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
 
@@ -45,15 +51,12 @@ def topic_data(r: redis.Redis, slug: str):
 
 st.set_page_config(page_title="Topic Timeline", layout="centered")
 
-st.markdown(
-    """
-    <style>
-    .tag-int {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
-    .tag-topic {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(pathlib.Path("assets/style.css").read_text(), unsafe_allow_html=True)
+
+sidebar = getattr(st, "sidebar", st)
+slider = getattr(sidebar, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 r = rconn()
 
@@ -83,22 +86,22 @@ if items:
     st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
     for item in items:
         title = item.get("title", "")
-        summary = item.get("summary", "")
+        summary = item.get("summary") or (item.get("body", "")[:300] + "…")
         body = item.get("body", "")
         tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
         ts = item.get("id", "")
 
-        title_line = f"**{title}**"
-        with st.expander(title_line):
-            st.markdown(body)
+        tag_html = " ".join(f"<span>{t}</span>" for t in tags)
 
-        tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
-        st.markdown(tag_html, unsafe_allow_html=True)
-        if summary:
-            st.markdown(summary)
-        if ts:
-            st.markdown(ts)
-        st.markdown("<hr>", unsafe_allow_html=True)
+        with st.container():
+            card = f"<div class='card'><h4>{title}</h4><p>{summary}</p>"
+            if body:
+                card += f"<details><summary>Read more</summary>{body}</details>"
+            card += f"<div class='tags'>{tag_html}</div></div>"
+            st.markdown(card, unsafe_allow_html=True)
+            if ts:
+                st.markdown(ts)
+            st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.info("No items yet")

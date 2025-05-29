@@ -34,7 +34,7 @@ class DummyStreamlit(types.ModuleType):
         pass
     def info(self, *a, **k):
         pass
-    def expander(self, *a, **k):
+    def container(self, *a, **k):
         return DummyExpander()
     def rerun(self):
         self.rerun_called = True

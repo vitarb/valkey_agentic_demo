@@ -9,13 +9,15 @@ from prometheus_client import Counter, Gauge, start_http_server
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 TOPICS = ["politics","business","technology","sports","health",
           "climate","science","education","entertainment","finance"]
-MAX_LEN = int(os.getenv("FEED_LEN", "100"))
+FEED_MAX_LEN = int(os.getenv("FEED_LEN", "100"))      # per-user feed length
+MAX_LEN = int(os.getenv("MAX_LEN", "10000"))           # topic stream length
 
 IN  = Counter("fan_in_total",  "")
 OUT = Counter("fan_out_total", "")
 Q_LEN = Gauge("topic_stream_len", "Length of each topic stream", ["topic"])
 FEED_PUSH = Counter("feed_push_total", "")
 FEED_LEN = Gauge("feed_len", "", ["uid"])
+TRIM_OPS = Gauge("topic_stream_trim_ops_total", "")
 
 # -------- helpers --------------------------------------------------
 async def rconn():
@@ -59,7 +61,10 @@ async def main():
                     else:
                         payload = f
                     users = await r.zrange(f"user:topic:{t}", 0, -1)
-                    await r.evalsha(sha, 0, payload.get("id", ""), t, json.dumps(payload), MAX_LEN)
+                    await r.evalsha(
+                        sha, 1, stream, mid, t, json.dumps(payload), FEED_MAX_LEN, MAX_LEN
+                    )
+                    TRIM_OPS.inc()
                     await r.xack(stream, grp, mid)
                     IN.inc(); OUT.inc()
 

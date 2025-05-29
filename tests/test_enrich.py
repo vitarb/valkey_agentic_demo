@@ -57,3 +57,67 @@ def test_classify(monkeypatch):
     batch = [{"title": "t", "body": "b"}]
     out = mod.classify(batch)
     assert out[0]["topic"] == "tech"
+
+
+@pytest.mark.asyncio
+async def test_stream_trim(monkeypatch):
+    monkeypatch.setenv("NEWS_RAW_MAXLEN", "5000")
+    mod = load_module(monkeypatch)
+
+    class DummyRedis:
+        def __init__(self):
+            self.streams = {
+                mod.SOURCE: [
+                    (str(i), {"id": i, "title": "t", "body": "b"})
+                    for i in range(6000)
+                ]
+            }
+            self.read_called = False
+
+        async def ping(self):
+            pass
+
+        async def xgroup_create(self, *a, **k):
+            pass
+
+        async def xreadgroup(self, grp, consumer, streams, count=1, block=0):
+            if not self.read_called:
+                self.read_called = True
+                return [(mod.SOURCE, self.streams[mod.SOURCE][:count])]
+            raise RuntimeError("stop")
+
+        async def xack(self, *a, **k):
+            pass
+
+        async def xtrim(self, name, maxlen=None):
+            if len(self.streams.get(name, [])) > maxlen:
+                self.streams[name] = self.streams[name][-maxlen:]
+
+        async def xlen(self, name):
+            return len(self.streams.get(name, []))
+
+        def pipeline(self):
+            class P:
+                def xadd(self, *a, **k):
+                    pass
+
+                def xtrim(self, *a, **k):
+                    pass
+
+                async def execute(self):
+                    pass
+
+            return P()
+
+    dummy = DummyRedis()
+
+    async def fake_rconn():
+        return dummy
+
+    monkeypatch.setattr(mod, "rconn", fake_rconn)
+    monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
+
+    with pytest.raises(RuntimeError):
+        await mod.main()
+
+    assert await dummy.xlen(mod.SOURCE) <= mod.NEWS_RAW_MAXLEN

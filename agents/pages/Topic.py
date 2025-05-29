@@ -56,21 +56,29 @@ st.markdown(
 )
 
 r = rconn()
-# Use the modern query parameter API
-qp = st.query_params
-def_topic = TOPICS[0]
-slug = qp.get("name", [def_topic])[0]
-idx = TOPICS.index(slug) if slug in TOPICS else 0
-selection = st.selectbox("Topic", TOPICS, index=idx)
-if selection != slug:
-    st.query_params.update(name=selection)
-    rerun()
+
+# --- query-string helper -------------------------------------------------
+try:
+    qp = st.query_params            # Streamlit ≥1.32
+    get_q = lambda k, d: qp.get(k, d)
+    set_q = lambda **kw: qp.update(kw)
+except AttributeError:
+    qp = st.experimental_get_query_params()   # fallback
+    get_q = lambda k, d: qp.get(k, d)[0] if k in qp else d
+    set_q = lambda **kw: st.experimental_set_query_params(**kw)
+
+slug = get_q("name", TOPICS[0])
+
+changed = st.selectbox("Topic", TOPICS, index=TOPICS.index(slug), key="topic_sel")
+if changed != slug:
+    set_q(name=changed)
+    st.rerun()
 
 st.markdown("[Back to user view](/)")
 
-items = topic_data(r, selection)
+items = topic_data(r, slug)
 
-st.subheader(f"{selection} stream")
+st.subheader(f"{slug} stream")
 if items:
     st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
     for item in items:

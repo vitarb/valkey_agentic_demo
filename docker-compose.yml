@@ -47,6 +47,7 @@ services:
     <<: *base
     command: python agents/user_reader.py
     depends_on: [valkey, prometheus]
+    deploy: {replicas: 5}
 
   replay:
     <<: *base

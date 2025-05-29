@@ -17,6 +17,10 @@ class DummyExpander:
     def markdown(self, *a, **k):
         pass
 
+class DummySidebar:
+    def page_link(self, *a, **k):
+        pass
+
 class DummyStreamlit(types.ModuleType):
     def __init__(self, qp, selection=None):
         super().__init__("streamlit")
@@ -24,6 +28,7 @@ class DummyStreamlit(types.ModuleType):
         self.selection = selection
         self.rerun_called = False
         self.experimental_rerun = self.rerun
+        self.sidebar = DummySidebar()
     def set_page_config(self, *a, **k):
         pass
     def markdown(self, *a, **k):

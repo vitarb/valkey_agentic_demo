@@ -43,6 +43,8 @@ def user_data(r: redis.Redis, uid: int):
 # ------------------------ Streamlit UI -------------------------------------
 
 st.set_page_config(page_title="User Timeline", layout="centered")
+st.sidebar.page_link("agents/ui.py", label="📰 User feed")
+st.sidebar.page_link("agents/pages/Topic.py", label="🏷️ Topic stream")
 st.markdown(
     """
     <style>

@@ -4,6 +4,11 @@ import time
 import random
 
 import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover - fallback for tests without dependency
+    def st_autorefresh(*a, **k):
+        pass
 import redis
 
 # Backward-compatible rerun function
@@ -52,6 +57,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+sidebar = getattr(st, "sidebar", st)
+slider = getattr(sidebar, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 r = rconn()
 lu = latest_uid(r)
@@ -105,7 +115,4 @@ else:
     st.info("No articles yet – try another uid or wait a bit…")
 
 if refresh:
-    rerun()
-else:
-    time.sleep(5)
     rerun()

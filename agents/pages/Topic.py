@@ -3,6 +3,11 @@ import json
 import time
 
 import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover - fallback for tests without dependency
+    def st_autorefresh(*a, **k):
+        pass
 import redis
 
 rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
@@ -54,6 +59,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+sidebar = getattr(st, "sidebar", st)
+slider = getattr(sidebar, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 r = rconn()
 

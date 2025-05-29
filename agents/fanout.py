@@ -51,8 +51,15 @@ async def main():
                 if not msgs:
                     continue
                 for mid, f in msgs[0][1]:
+                    if "data" in f:
+                        try:
+                            payload = json.loads(f["data"])
+                        except Exception:
+                            payload = {"summary": f["data"]}
+                    else:
+                        payload = f
                     users = await r.zrange(f"user:topic:{t}", 0, -1)
-                    await r.evalsha(sha, 0, f["id"], t, json.dumps(f), MAX_LEN)
+                    await r.evalsha(sha, 0, payload.get("id", ""), t, json.dumps(payload), MAX_LEN)
                     await r.xack(stream, grp, mid)
                     IN.inc(); OUT.inc()
 

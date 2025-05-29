@@ -5,11 +5,24 @@ import pytest
 class DummyRedis:
     def __init__(self):
         self.loaded = None
+        self.lists = {}
+        self.users = ["0"]
     async def script_load(self, lua):
         self.loaded = lua
         return "sha123"
     async def ping(self):
         pass
+    async def evalsha(self, sha, numkeys, *args):
+        _id, topic, payload_json, max_len = args
+        max_len = int(max_len)
+        for u in self.users:
+            key = f"feed:{u}"
+            self.lists.setdefault(key, [])
+            self.lists[key].insert(0, payload_json)
+            self.lists[key] = self.lists[key][:max_len]
+        return len(self.users)
+    async def llen(self, key):
+        return len(self.lists.get(key, []))
 
 async def fake_from_url(url, decode_responses=True):
     return DummyRedis()
@@ -35,3 +48,16 @@ async def test_load_sha(monkeypatch, tmp_path):
     sha = await mod.load_sha(redis_inst)
     assert sha == "sha123"
     assert redis_inst.loaded == "return 1"
+
+
+@pytest.mark.asyncio
+async def test_feed_ltrim(monkeypatch):
+    mod = load_module(monkeypatch)
+    dummy = DummyRedis()
+    sha = await mod.load_sha(dummy)
+
+    for i in range(150):
+        await dummy.evalsha(sha, 0, str(i), "tech", "{}", mod.MAX_LEN)
+
+    ln = await dummy.llen("feed:0")
+    assert ln <= mod.MAX_LEN

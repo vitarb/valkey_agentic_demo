@@ -57,7 +57,9 @@ r = rconn()
 lu = latest_uid(r)
 if lu == 0:
     st.warning("Seeder not running…")
-uid = st.number_input("User ID", value=lu, step=1, min_value=0, key="uid")
+if "uid" not in st.session_state:
+    st.session_state.uid = lu or 0
+uid = st.number_input("User ID", key="uid", step=1, min_value=0)
 
 refresh = st.button("Refresh")
 if lu > 0:

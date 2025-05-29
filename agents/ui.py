@@ -72,7 +72,8 @@ interests, feed = user_data(r, uid)
 st.subheader("Interests")
 if interests:
     tags = " ".join(
-        f"<span class='tag-int'>[{t}](?page=Topic&name={t})</span>" for t in interests
+        f"<span class='tag-int'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+        for t in interests
     )
     st.markdown(tags, unsafe_allow_html=True)
 else:

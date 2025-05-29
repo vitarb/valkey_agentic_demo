@@ -64,7 +64,10 @@ if css_path.exists():
 
 # sidebar navigation & refresh slider ---------------------------------------
 st.sidebar.page_link("agents/ui.py",                    label="📰 User feed")
-st.sidebar.page_link("agents/pages/Topic.py",           label="🏷️ Topic stream")
+try:
+    st.sidebar.page_link("agents/pages/Topic.py", label="🏷️ Topic stream")
+except FileNotFoundError:
+    pass
 
 interval = st.sidebar.slider("Refresh (sec)", 1, 15, 5)
 st_autorefresh(interval * 1000, key="auto_refresh")

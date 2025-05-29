@@ -1,6 +1,6 @@
 .PHONY: dev down clear logs data test
 
-SERVICES = enrich fanout reader replay dashboard grafana
+SERVICES = enrich fanout reader replay dashboard grafana ui
 SEED     = seed
 
 dev:

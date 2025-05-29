@@ -90,7 +90,14 @@ async def main() -> None:
             # Split & map Redis fields to plain dicts ---------------------------------
             batch_slice, buffer = buffer[:BATCH], buffer[BATCH:]
             mids, raw_docs = zip(*batch_slice)
-            docs = [{"id": d["id"], "title": d["title"], "body": d["text"]} for d in raw_docs]
+            docs = [
+                {
+                    "id": d["id"],
+                    "title": d["title"],
+                    "body": d.get("body", d.get("text", "")),
+                }
+                for d in raw_docs
+            ]
 
             # Classify & publish ------------------------------------------------------
             docs = classify(docs)
@@ -98,11 +105,16 @@ async def main() -> None:
             pipe = r.pipeline()
             for d in docs:
                 stream = f"topic:{d['topic']}"
-                payload = json.dumps({
-                    "id": d["id"],
-                    "title": d["title"],
-                    "summary": d.get("summary", ""),
-                })
+                payload = json.dumps(
+                    {
+                        "id": d["id"],
+                        "title": d["title"],
+                        "summary": d.get("summary", ""),
+                        "body": d.get("body", ""),
+                        "tags": [d["topic"]],
+                        "topic": d["topic"],
+                    }
+                )
                 pipe.xadd(stream, {"data": payload})
                 pipe.xtrim(stream, maxlen=10_000)
             await pipe.execute()

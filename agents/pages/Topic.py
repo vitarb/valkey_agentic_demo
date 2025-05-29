@@ -75,10 +75,20 @@ if items:
     for item in items:
         title = item.get("title", "")
         summary = item.get("summary", "")
+        body = item.get("body", "")
+        tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
         ts = item.get("id", "")
-        body = f"**{title}**" + (f"\n\n{summary}" if summary else "")
-        st.markdown(body)
-        st.markdown(ts)
+
+        title_line = f"**{title}**"
+        with st.expander(title_line):
+            st.markdown(body)
+
+        tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
+        st.markdown(tag_html, unsafe_allow_html=True)
+        if summary:
+            st.markdown(summary)
+        if ts:
+            st.markdown(ts)
         st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:

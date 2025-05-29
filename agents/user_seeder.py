@@ -26,18 +26,31 @@ async def main():
     r   = await rconn()
     uid   = 0
     total = 0
-    while True:
-        try:
-            ints = random.sample(TOPICS, k=random.randint(2,4))
-            await r.json().set(f"user:{uid}","$",{"interests":ints})
-            for t in ints: await r.zadd(f"user:topic:{t}",{uid:1})
-            await r.set("latest_uid", uid)
-            USERS.inc(); uid += 1
-            total += 1
-            if total % 100 == 0:
-                print(f"[+] {total} users seeded (latest uid = {uid-1})")
-            await asyncio.sleep(1 / RATE)
-        except RedisConnError as e:
-            print("[seeder] reconnect:", e); r = await rconn()
+    created = 0
+    skipped = 0
+    try:
+        while True:
+            try:
+                if await r.exists(f"user:{uid}"):
+                    skipped += 1
+                else:
+                    ints = random.sample(TOPICS, k=random.randint(2,4))
+                    pipe = r.pipeline(transaction=True)
+                    pipe.json().set(f"user:{uid}", "$", {"interests": ints})
+                    for t in ints:
+                        pipe.zadd(f"user:topic:{t}", {uid: 0})
+                    pipe.set("latest_uid", uid)
+                    await pipe.execute()
+                    USERS.inc(); created += 1
+                uid += 1
+                total += 1
+                if total % 100 == 0:
+                    print(f"[+] {total} users seeded (latest uid = {uid-1})")
+                await asyncio.sleep(1 / RATE)
+            except RedisConnError as e:
+                print("[seeder] reconnect:", e); r = await rconn()
+    finally:
+        print(f"[seeder] created={created} skipped={skipped}")
 
-if __name__=="__main__": asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

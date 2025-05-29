@@ -5,6 +5,7 @@ import random
 
 import streamlit as st
 import redis
+import pathlib
 
 # Backward-compatible rerun function
 rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
@@ -43,15 +44,7 @@ def user_data(r: redis.Redis, uid: int):
 # ------------------------ Streamlit UI -------------------------------------
 
 st.set_page_config(page_title="User Timeline", layout="centered")
-st.markdown(
-    """
-    <style>
-    .tag-int {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
-    .tag-topic {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(pathlib.Path("assets/style.css").read_text(), unsafe_allow_html=True)
 
 r = rconn()
 lu = latest_uid(r)
@@ -72,10 +65,10 @@ interests, feed = user_data(r, uid)
 st.subheader("Interests")
 if interests:
     tags = " ".join(
-        f"<span class='tag-int'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+        f"<span><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
         for t in interests
     )
-    st.markdown(tags, unsafe_allow_html=True)
+    st.markdown(f"<div class='tags'>{tags}</div>", unsafe_allow_html=True)
 else:
     st.write("No interests found")
 
@@ -89,17 +82,18 @@ if feed:
         tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
         ts = item.get("id", "")
 
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
         title_line = f"**{title}**"
         with st.expander(title_line):
             st.markdown(body)
 
-        tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
-        st.markdown(tag_html, unsafe_allow_html=True)
+        tag_html = " ".join(f"<span>{t}</span>" for t in tags)
+        st.markdown(f"<div class='tags'>{tag_html}</div>", unsafe_allow_html=True)
         if summary:
             st.markdown(summary)
         if ts:
             st.markdown(ts)
-        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.info("No articles yet – try another uid or wait a bit…")

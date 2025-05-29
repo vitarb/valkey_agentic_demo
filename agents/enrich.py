@@ -124,7 +124,7 @@ async def main() -> None:
 
             # Acknowledge and record metrics -----------------------------------------
             await r.xack(SOURCE, grp, *mids)
-            await r.xtrim(SOURCE, maxlen=NEWS_RAW_MAXLEN)
+            await r.xtrim(SOURCE, maxlen=NEWS_RAW_MAXLEN, approximate=False)
             TRIM_OPS.inc()
             IN_MSG.inc(len(docs))
             OUT_MSG.inc(len(docs))

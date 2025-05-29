@@ -121,3 +121,93 @@ async def test_stream_trim(monkeypatch):
         await mod.main()
 
     assert await dummy.xlen(mod.SOURCE) <= mod.NEWS_RAW_MAXLEN
+
+
+@pytest.mark.asyncio
+async def test_backlog_gauge_drop(monkeypatch):
+    """BACKLOG gauge should reflect trimmed stream length."""
+    monkeypatch.setenv("NEWS_RAW_MAXLEN", "5000")
+
+    recorded = []
+    import prometheus_client
+
+    class GaugeRec:
+        def __init__(self, *a, **k):
+            self.value = 0
+        def inc(self, *a, **k):
+            pass
+        def set(self, v):
+            self.value = v
+            recorded.append(v)
+        def labels(self, *a, **k):
+            return self
+        def time(self):
+            class Ctx:
+                def __enter__(self):
+                    pass
+                def __exit__(self, exc_type, exc, tb):
+                    pass
+            return Ctx()
+
+    monkeypatch.setattr(prometheus_client, "Gauge", GaugeRec)
+
+    mod = load_module(monkeypatch)
+
+    class DummyRedis:
+        def __init__(self):
+            self.streams = {
+                mod.SOURCE: [
+                    (str(i), {"id": i, "title": "t", "body": "b"})
+                    for i in range(6000)
+                ]
+            }
+            self.read_called = False
+
+        async def ping(self):
+            pass
+
+        async def xgroup_create(self, *a, **k):
+            pass
+
+        async def xreadgroup(self, grp, consumer, streams, count=1, block=0):
+            if not self.read_called:
+                self.read_called = True
+                return [(mod.SOURCE, self.streams[mod.SOURCE][:count])]
+            raise RuntimeError("stop")
+
+        async def xack(self, *a, **k):
+            pass
+
+        async def xtrim(self, name, maxlen=None, approximate=False):
+            if len(self.streams.get(name, [])) > maxlen:
+                self.streams[name] = self.streams[name][-maxlen:]
+
+        async def xlen(self, name):
+            return len(self.streams.get(name, []))
+
+        def pipeline(self):
+            class P:
+                def xadd(self, *a, **k):
+                    pass
+
+                def xtrim(self, *a, **k):
+                    pass
+
+                async def execute(self):
+                    pass
+
+            return P()
+
+    dummy = DummyRedis()
+
+    async def fake_rconn():
+        return dummy
+
+    monkeypatch.setattr(mod, "rconn", fake_rconn)
+    monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
+
+    with pytest.raises(RuntimeError):
+        await mod.main()
+
+    assert recorded[-1] == await dummy.xlen(mod.SOURCE)
+    assert recorded[-1] < 6000

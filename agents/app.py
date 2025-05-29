@@ -2,9 +2,14 @@ import os
 import json
 import time
 import random
+import pathlib
 
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover
+    def st_autorefresh(*_a, **_k):
+        pass
 import redis
 
 # Backward-compatible rerun function
@@ -69,6 +74,10 @@ def topic_data(r: redis.Redis, slug: str):
 
 st.set_page_config(page_title="Valkey Demo", layout="centered")
 
+css_path = pathlib.Path("assets/style.css")
+if css_path.exists():
+    st.markdown(css_path.read_text(), unsafe_allow_html=True)
+
 st.markdown(
     """
     <style>
@@ -94,7 +103,7 @@ with tab_user:
         def _set_random_uid(lu=lu):
             st.session_state["uid"] = random.randint(0, lu)
         st.button("Random user", on_click=_set_random_uid)
-    refresh = st.button("Refresh", key="refresh_user")
+    st.button("Refresh", on_click=st.rerun)
 
     interests, feed = user_data(r, uid)
 

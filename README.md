@@ -48,4 +48,6 @@ make test
 * `valkey/` – Valkey Docker image with JSON module
 * `demo.sh` and `manage.py` – utilities for launching a demo EC2 host
 
+To lower backlog curves, set `TOPIC_MAXLEN=2000` in `docker-compose.yml`.
+
 Feel free to modify the services or compose file to experiment further!

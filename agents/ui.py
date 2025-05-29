@@ -43,6 +43,15 @@ def user_data(r: redis.Redis, uid: int):
 # ------------------------ Streamlit UI -------------------------------------
 
 st.set_page_config(page_title="User Timeline", layout="centered")
+st.markdown(
+    """
+    <style>
+    .tag-int {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
+    .tag-topic {background:#eee;border-radius:4px;padding:2px 6px;margin-right:4px}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 r = rconn()
 lu = latest_uid(r)
@@ -62,8 +71,7 @@ interests, feed = user_data(r, uid)
 st.subheader("Interests")
 if interests:
     tags = " ".join(
-        f"<span style='background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px'>{t}</span>"
-        for t in interests
+        f"<span class='tag-int'>[{t}](?page=Topic&name={t})</span>" for t in interests
     )
     st.markdown(tags, unsafe_allow_html=True)
 else:
@@ -78,7 +86,7 @@ if feed:
         ts = item.get("id", "")
         st.markdown(
             f"**{text}**\n\n"
-            f"<span style='background:#eee;border-radius:4px;padding:2px 6px;margin-right:4px'>{topic}</span> {ts}",
+            f"<span class='tag-topic'>{topic}</span> {ts}",
             unsafe_allow_html=True,
         )
         st.markdown("<hr>", unsafe_allow_html=True)

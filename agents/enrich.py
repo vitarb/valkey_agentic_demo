@@ -13,6 +13,7 @@ but you can swap it out for a simpler heuristic if desired.
 """
 from __future__ import annotations
 import os
+import json
 import asyncio
 from typing import List, Dict
 
@@ -97,8 +98,12 @@ async def main() -> None:
             pipe = r.pipeline()
             for d in docs:
                 stream = f"topic:{d['topic']}"
-                payload = {"id": d["id"], "title": d["title"]}
-                pipe.xadd(stream, payload)
+                payload = json.dumps({
+                    "id": d["id"],
+                    "title": d["title"],
+                    "summary": d.get("summary", ""),
+                })
+                pipe.xadd(stream, {"data": payload})
                 pipe.xtrim(stream, maxlen=10_000)
             await pipe.execute()
 

@@ -49,7 +49,6 @@ async def test_load_sha(monkeypatch, tmp_path):
     assert sha == "sha123"
     assert redis_inst.loaded == "return 1"
 
-
 @pytest.mark.asyncio
 async def test_feed_ltrim(monkeypatch):
     mod = load_module(monkeypatch)
@@ -61,3 +60,48 @@ async def test_feed_ltrim(monkeypatch):
 
     ln = await dummy.llen("feed:0")
     assert ln <= mod.MAX_LEN
+
+class TrimRedis(DummyRedis):
+    def __init__(self):
+        super().__init__()
+        self.entries = [(str(i), {"data": "{}"}) for i in range(200)]
+        self.read = False
+    async def xgroup_create(self, *a, **k):
+        pass
+    async def xreadgroup(self, grp, consumer, streams, count=32, block=50):
+        if self.read:
+            return []
+        self.read = True
+        key = list(streams.keys())[0]
+        return [(key, self.entries.copy())]
+    async def zrange(self, *a):
+        return []
+    async def evalsha(self, sha, numkeys, *args):
+        max_len = int(args[-1])
+        if len(self.entries) > max_len:
+            self.entries = self.entries[-max_len:]
+        return 0
+    async def xack(self, *a):
+        pass
+    async def xlen(self, stream):
+        return len(self.entries)
+
+
+@pytest.mark.asyncio
+async def test_stream_trim(monkeypatch):
+    monkeypatch.setenv("MAX_LEN", "100")
+    mod = load_module(monkeypatch)
+    dummy = TrimRedis()
+    async def fake_rconn():
+        return dummy
+    monkeypatch.setattr(mod, "rconn", fake_rconn)
+    monkeypatch.setattr(mod, "load_sha", lambda *_: "sha")
+    monkeypatch.setattr(mod, "TOPICS", ["t"])
+    monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
+    async def stop(*_a, **_k):
+        raise RuntimeError("stop")
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(RuntimeError):
+        await mod.main()
+    assert len(dummy.entries) < 200
+

@@ -56,13 +56,14 @@ st.markdown(
 )
 
 r = rconn()
-params = st.experimental_get_query_params()
+# Use the modern query parameter API
+qp = st.query_params
 def_topic = TOPICS[0]
-slug = params.get("name", [def_topic])[0]
+slug = qp.get("name", [def_topic])[0]
 idx = TOPICS.index(slug) if slug in TOPICS else 0
 selection = st.selectbox("Topic", TOPICS, index=idx)
 if selection != slug:
-    st.experimental_set_query_params(name=selection)
+    st.query_params.update(name=selection)
     rerun()
 
 st.markdown("[Back to user view](/)")

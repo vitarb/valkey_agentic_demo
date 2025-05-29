@@ -3,6 +3,11 @@ import json
 import time
 
 import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover - fallback for tests without dependency
+    def st_autorefresh(*a, **k):
+        pass
 import redis
 import pathlib
 
@@ -46,6 +51,11 @@ def topic_data(r: redis.Redis, slug: str):
 
 st.set_page_config(page_title="Topic Timeline", layout="centered")
 st.markdown(pathlib.Path("assets/style.css").read_text(), unsafe_allow_html=True)
+
+sidebar = getattr(st, "sidebar", st)
+slider = getattr(sidebar, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 r = rconn()
 

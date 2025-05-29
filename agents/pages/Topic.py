@@ -1,22 +1,29 @@
 import os
 import json
 import time
-
-import streamlit as st
-import redis
 import pathlib
 
-rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
+import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+except Exception:  # pragma: no cover – keep tests happy if extra not installed
+    def st_autorefresh(*_a, **_k):
+        pass
+
+import redis
+
+# ---------------------------------------------------------------------------
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
-FEED_LEN = int(os.getenv("FEED_LEN", "100"))
+FEED_LEN   = int(os.getenv("FEED_LEN", "100"))
 TOPICS = [
     "politics", "business", "technology", "sports", "health",
     "climate", "science", "education", "entertainment", "finance",
 ]
 
-
-def rconn():
+# ---------------------------------------------------------------------------
+def rconn() -> redis.Redis:
+    """Block-until-ready Redis connection."""
     while True:
         try:
             r = redis.from_url(VALKEY_URL, decode_responses=True)
@@ -25,42 +32,54 @@ def rconn():
         except Exception:
             time.sleep(1)
 
-
 def topic_data(r: redis.Redis, slug: str):
+    """Return latest items for *slug* topic."""
     raw = r.xrevrange(f"topic:{slug}", count=FEED_LEN)
-    items = []
+    out = []
     for mid, fields in raw:
+        # payload is JSON-encoded under "data"
         if "data" in fields:
             try:
-                item = json.loads(fields["data"])
+                doc = json.loads(fields["data"])
             except Exception:
-                item = {"title": fields["data"]}
+                doc = {"title": fields["data"]}
         else:
-            item = fields
-        item.setdefault("id", mid)
-        items.append(item)
-    return items
+            doc = fields
+        doc.setdefault("id", mid)
+        out.append(doc)
+    return out
 
-
-# ------------------------ Streamlit UI -------------------------------------
-
+# ---------------------------------------------------------------------------
+#                                Streamlit UI
+# ---------------------------------------------------------------------------
 st.set_page_config(page_title="Topic Timeline", layout="centered")
-st.markdown(pathlib.Path("assets/style.css").read_text(), unsafe_allow_html=True)
+
+# load shared CSS if present
+css_path = pathlib.Path("assets/style.css")
+if css_path.exists():
+    st.markdown(css_path.read_text(), unsafe_allow_html=True)
+
+# sidebar refresh slider ----------------------------------------------------
+sidebar = getattr(st, "sidebar", st)
+slider  = getattr(sidebar, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 r = rconn()
 
-# --- query-string helper -------------------------------------------------
-try:
-    qp = st.query_params            # Streamlit ≥1.32
+# --- query-string helpers ---------------------------------------------------
+try:                                    # Streamlit ≥1.32
+    qp = st.query_params
     get_q = lambda k, d: qp.get(k, d)
     set_q = lambda **kw: qp.update(kw)
-except AttributeError:
-    qp = st.experimental_get_query_params()   # fallback
+except AttributeError:                  # older fallback
+    qp = st.experimental_get_query_params()
     get_q = lambda k, d: qp.get(k, d)[0] if k in qp else d
     set_q = lambda **kw: st.experimental_set_query_params(**kw)
 
 slug = get_q("name", TOPICS[0])
 
+# topic selector keeps URL in sync
 changed = st.selectbox("Topic", TOPICS, index=TOPICS.index(slug), key="topic_sel")
 if changed != slug:
     set_q(name=changed)
@@ -70,28 +89,35 @@ st.markdown("[Back to user view](/)")
 
 items = topic_data(r, slug)
 
+# ---------------------------------------------------------------------------
 st.subheader(f"{slug} stream")
+
 if items:
-    st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
-    for item in items:
-        title = item.get("title", "")
-        summary = item.get("summary") or (item.get("body", "")[:300] + "…")
-        body = item.get("body", "")
-        tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-        ts = item.get("id", "")
+    st.markdown(
+        "<div style='max-height:400px;overflow-y:auto'>",
+        unsafe_allow_html=True
+    )
+    for itm in items:
+        title   = itm.get("title", "")
+        summary = itm.get("summary") or (itm.get("body", "")[:300] + "…")
+        body    = itm.get("body", "")
+        tags    = itm.get("tags") or ([itm.get("topic")] if itm.get("topic") else [])
+        ts      = itm.get("id", "")
 
         tag_html = " ".join(f"<span>{t}</span>" for t in tags)
 
+        # ---------- card rendering -----------------------------------------
         with st.container():
-            card = f"<div class='card'><h4>{title}</h4>"
+            card  = f"<div class='card'><h4>{title}</h4>"
             if summary:
                 card += f"<p>{summary}</p>"
             if body:
                 card += f"<details><summary>Read more</summary>{body}</details>"
-            card += f"<div class='tags'>{tag_html}</div></div>"
-            st.markdown(card, unsafe_allow_html=True)
+            card += f"<div class='tags'>{tag_html}</div>"
             if ts:
-                st.markdown(ts)
+                card += f"<small>{ts}</small>"
+            card += "</div>"
+            st.markdown(card, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.info("No items yet")

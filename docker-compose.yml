@@ -65,7 +65,7 @@ services:
 
   ui:
     <<: *base
-    command: streamlit run ./agents/ui.py --server.port 8502 --server.address 0.0.0.0
+    command: streamlit run ./agents/app.py --server.port 8502 --server.address 0.0.0.0
     ports: ["8502:8502"]
     depends_on: [valkey]
 

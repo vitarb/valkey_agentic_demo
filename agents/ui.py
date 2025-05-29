@@ -63,10 +63,9 @@ uid = st.number_input("User ID", key="uid", step=1, min_value=0)
 
 refresh = st.button("Refresh")
 if lu > 0:
-    random_btn = st.button("Random user")
-    if random_btn:
-        st.session_state.uid = random.randint(0, lu)
-        rerun()
+    def _set_random_uid(lu=lu):
+        st.session_state["uid"] = random.randint(0, lu)
+    st.button("Random user", on_click=_set_random_uid)
 
 interests, feed = user_data(r, uid)
 

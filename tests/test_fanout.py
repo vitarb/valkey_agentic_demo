@@ -56,10 +56,10 @@ async def test_feed_ltrim(monkeypatch):
     sha = await mod.load_sha(dummy)
 
     for i in range(150):
-        await dummy.evalsha(sha, 0, str(i), "tech", "{}", mod.MAX_LEN)
+        await dummy.evalsha(sha, 0, str(i), "tech", "{}", mod.TOPIC_MAX_LEN)
 
     ln = await dummy.llen("feed:0")
-    assert ln <= mod.MAX_LEN
+    assert ln <= mod.TOPIC_MAX_LEN
 
 class TrimRedis(DummyRedis):
     def __init__(self):
@@ -89,7 +89,7 @@ class TrimRedis(DummyRedis):
 
 @pytest.mark.asyncio
 async def test_stream_trim(monkeypatch):
-    monkeypatch.setenv("MAX_LEN", "100")
+    monkeypatch.setenv("TOPIC_MAXLEN", "100")
     mod = load_module(monkeypatch)
     dummy = TrimRedis()
     async def fake_rconn():

@@ -62,7 +62,7 @@ interests, feed = user_data(r, uid)
 st.subheader("Interests")
 if interests:
     tags = " ".join(
-        f"<span style='background:#eee;border-radius:4px;padding:2px 6px;margin-right:4px'>{t}</span>"
+        f"<span style='background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px'>{t}</span>"
         for t in interests
     )
     st.markdown(tags, unsafe_allow_html=True)

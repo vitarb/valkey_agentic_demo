@@ -40,5 +40,43 @@ async def test_main_single_loop(monkeypatch):
         raise RuntimeError("stop")
     monkeypatch.setattr(asyncio, "sleep", stop)
     with pytest.raises(RuntimeError):
-        await mod.main()
+        await mod.main([])
     assert dummy.popped == 1
+
+
+@pytest.mark.asyncio
+async def test_rps_env_override(monkeypatch):
+    dummy = DummyRedis()
+    mod = load_mod(monkeypatch)
+    async def fake_rconn():
+        return dummy
+    monkeypatch.setattr(mod, "rconn", fake_rconn)
+    monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
+    monkeypatch.setenv("READER_RPS", "5")
+    recorded = {}
+    async def stop(delay, *a, **k):
+        recorded["delay"] = delay
+        raise RuntimeError("stop")
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(RuntimeError):
+        await mod.main([])
+    assert pytest.approx(0.2, rel=0.1) == recorded["delay"]
+
+
+@pytest.mark.asyncio
+async def test_rps_cli(monkeypatch):
+    dummy = DummyRedis()
+    mod = load_mod(monkeypatch)
+    async def fake_rconn():
+        return dummy
+    monkeypatch.setattr(mod, "rconn", fake_rconn)
+    monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
+    monkeypatch.delenv("READER_RPS", raising=False)
+    recorded = {}
+    async def stop(delay, *a, **k):
+        recorded["delay"] = delay
+        raise RuntimeError("stop")
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(RuntimeError):
+        await mod.main(["--rps", "4"])
+    assert pytest.approx(0.25, rel=0.1) == recorded["delay"]

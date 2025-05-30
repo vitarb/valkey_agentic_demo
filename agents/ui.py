@@ -3,6 +3,7 @@ import json
 import random
 import pathlib
 import time
+from html import escape
 
 from agents.utils import reltime
 
@@ -116,28 +117,25 @@ if feed:
         summary = itm.get("summary")
         body    = itm.get("body", "")
         tags    = itm.get("tags") or ([itm.get("topic")] if itm.get("topic") else [])
-        ts = reltime(itm.get("id", ""))
-
         if not summary:
             summary = (body[:250] + "…") if body else ""
 
+        ts = reltime(itm.get("id", ""))
         tag_html = " ".join(
-            f"<span><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+            f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
             for t in tags
         )
 
-        # ---------- card rendering -----------------------------------------
-        with st.container():
-            card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
-            if summary:
-                card += f"<p>{summary}</p>"
-            if body:
-                card += f"<details><summary>Read more</summary>{body}</details>"
-            card += f"<div class='tags'>{tag_html}</div>"
-            if ts:
-                card += f"<small>{ts}</small>"
-            card += "</details></div>"
-            st.markdown(card, unsafe_allow_html=True)
+        row_id = f"row_{itm['id'].translate(str.maketrans({'-':'','.' :''}))}"
+        html = (
+            f"<input type='checkbox' id='{row_id}' hidden>"
+            f"<label for='{row_id}' class='row'>"
+                f"<div class='row-l'><h4>{escape(title)}</h4><p>{escape(summary)}</p></div>"
+                f"<div class='row-r'>{tag_html}<br><small>{ts}</small></div>"
+            f"</label>"
+            f"<div class='row-body' style='display:none' markdown='1'>{body}</div>"
+        )
+        st.markdown(html, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.info("No articles yet – try another UID or wait a bit…")

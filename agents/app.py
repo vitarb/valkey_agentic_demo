@@ -1,7 +1,8 @@
 import os
 import json
 import time
-import datetime
+
+from agents.utils import reltime
 import random
 import pathlib
 
@@ -123,15 +124,7 @@ with tab_user:
             summary = item.get("summary")
             body    = item.get("body", "")
             tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts_raw  = item.get("id", "")
-            ts = ""
-            if ts_raw:
-                try:
-                    ts_ms  = int(ts_raw.split("-")[0])
-                    ts_dt  = datetime.datetime.utcfromtimestamp(ts_ms / 1000)
-                    ts = ts_dt.isoformat() + "Z"
-                except Exception:
-                    pass
+            ts = reltime(item.get("id", ""))
 
             if not summary:
                 summary = (body[:250] + "…") if body else ""
@@ -181,15 +174,7 @@ with tab_topic:
             summary = item.get("summary")
             body    = item.get("body", "")
             tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts_raw  = item.get("id", "")
-            ts = ""
-            if ts_raw:
-                try:
-                    ts_ms = int(ts_raw.split("-")[0])
-                    ts_dt = datetime.datetime.utcfromtimestamp(ts_ms / 1000)
-                    ts = ts_dt.isoformat() + "Z"
-                except Exception:
-                    pass
+            ts = reltime(item.get("id", ""))
 
             if not summary:
                 summary = (body[:250] + "…") if body else ""

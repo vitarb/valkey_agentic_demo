@@ -3,7 +3,8 @@ import json
 import random
 import pathlib
 import time
-import datetime
+
+from agents.utils import reltime
 
 import streamlit as st
 try:
@@ -115,15 +116,7 @@ if feed:
         summary = itm.get("summary")
         body    = itm.get("body", "")
         tags    = itm.get("tags") or ([itm.get("topic")] if itm.get("topic") else [])
-        ts_raw  = itm.get("id")
-        ts = ""
-        if ts_raw:
-            try:
-                ts_part = ts_raw.split("-")[0]
-                ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
-                ts = ts_dt.isoformat() + "Z"
-            except Exception:
-                ts = ""
+        ts = reltime(itm.get("id", ""))
 
         if not summary:
             summary = (body[:250] + "…") if body else ""

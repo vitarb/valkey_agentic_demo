@@ -25,4 +25,4 @@ data:
 	@echo "CSV ready → data/news_sample.csv"
 
 test:
-	pytest -q
+	PYTHONPATH=$(CURDIR) pytest -q

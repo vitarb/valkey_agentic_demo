@@ -95,7 +95,9 @@ async def test_stream_trim(monkeypatch):
     async def fake_rconn():
         return dummy
     monkeypatch.setattr(mod, "rconn", fake_rconn)
-    monkeypatch.setattr(mod, "load_sha", lambda *_: "sha")
+    async def fake_load_sha(*_):
+        return "sha"
+    monkeypatch.setattr(mod, "load_sha", fake_load_sha)
     monkeypatch.setattr(mod, "TOPICS", ["t"])
     monkeypatch.setattr(mod, "start_http_server", lambda *a, **k: None)
     async def stop(*_a, **_k):

@@ -105,7 +105,7 @@ async def test_stream_trim(monkeypatch):
         async def xack(self, *a, **k):
             pass
 
-        async def xtrim(self, name, maxlen=None):
+        async def xtrim(self, name, maxlen=None, approximate=False):
             if len(self.streams.get(name, [])) > maxlen:
                 self.streams[name] = self.streams[name][-maxlen:]
 

@@ -71,6 +71,12 @@ services:
 
   valkey_exporter:
     image: oliver006/redis_exporter:latest   # <─ official Prometheus exporter
-    command: ["--redis.addr=redis://valkey:6379"]
+    command: ["--redis.addr=redis://valkey:6379", "--latency-metrics"]
     ports: ["9121:9121"]
+    depends_on: [valkey]
+
+  latency_exporter:
+    <<: *base
+    command: python agents/latency_exporter.py
+    ports: ["9122:9122"]
     depends_on: [valkey]

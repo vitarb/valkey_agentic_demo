@@ -6,7 +6,7 @@ VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 CSV    = os.getenv("REPLAY_FILE", "data/news_sample.csv")
 RPS    = float(os.getenv("REPLAY_RATE", "250"))
 
-MSG = Counter("producer_msgs_total", "")
+MSG = Counter("producer_msgs_total", "", ["topic"])
 
 async def redis_ready():
     while True:
@@ -31,7 +31,8 @@ async def main():
             await r.xadd("news_raw", {
                 "id": row["id"], "title": row["title"], "text": row["text"]
             })
-            MSG.inc()
+            topic = row.get("topic", "unknown")
+            MSG.labels(topic=topic).inc()
         except RedisConnError:
             r = await redis_ready()
             continue

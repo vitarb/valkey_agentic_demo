@@ -13,3 +13,17 @@
   margin-right:4px;
   font-size:.75rem;
 }
+
+/* slim row container */
+.row      {display:flex;justify-content:space-between;align-items:flex-start;
+           padding:.55rem .8rem;border-bottom:1px solid #282828;
+           cursor:pointer;transition:background .15s}
+.row:hover{background:#222}
+.row-l    {flex:1 1 auto;max-width:70%}
+.row-l h4 {margin:0;font-size:.9rem;font-weight:600;white-space:nowrap;
+           overflow:hidden;text-overflow:ellipsis}
+.row-l p  {margin:.20rem 0 0;font-size:.8rem;color:#bbb;white-space:nowrap;
+           overflow:hidden;text-overflow:ellipsis}
+.row-r    {min-width:110px;text-align:right;font-size:.75rem}
+.row-r .tags span{margin-left:.25rem}
+.row-body {margin:.4rem .4rem 0;color:#ccc;font-size:.85rem;line-height:1.35}

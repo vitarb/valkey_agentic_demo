@@ -5,6 +5,7 @@ import time
 from agents.utils import reltime
 import random
 import pathlib
+from html import escape
 
 import streamlit as st
 try:
@@ -124,32 +125,26 @@ with tab_user:
             summary = item.get("summary")
             body    = item.get("body", "")
             tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts = reltime(item.get("id", ""))
-
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
-            # clickable tags
+            ts = reltime(item.get("id", ""))
             tag_html = " ".join(
                 f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
                 for t in tags
             )
 
-            # card rendering
-            with st.container():
-                card  = (
-                    "<div class='card'><details open>"
-                    f"<summary><h4>{title}</h4></summary>"
-                )
-                if summary:
-                    card += f"<p>{summary}</p>"
-                if body:
-                    card += f"<details><summary>Read more</summary>{body}</details>"
-                card += f"<div class='tags'>{tag_html}</div>"
-                if ts:
-                    card += f"<small>{ts}</small>"
-                card += "</details></div>"
-                st.markdown(card, unsafe_allow_html=True)
+            row_id = f"row_{item['id'].replace('-', '')}"
+            html = (
+                f"<input type='checkbox' id='{row_id}' hidden>"
+                f"<label for='{row_id}' class='row'>"
+                    f"<div class='row-l'><h4>{escape(title)}</h4><p>{escape(summary)}</p></div>"
+                    f"<div class='row-r'>{tag_html}<br><small>{ts}</small></div>"
+                f"</label>"
+                f"<div class='row-body' style='display:none' markdown='1'>{body}</div>"
+                f"<script>const cb=document.getElementById('{row_id}');cb.addEventListener('change',e=>{{cb.nextElementSibling.nextElementSibling.style.display = cb.checked?'block':'none';}});</script>"
+            )
+            st.markdown(html, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No articles yet – try another uid or wait a bit…")
@@ -174,30 +169,26 @@ with tab_topic:
             summary = item.get("summary")
             body    = item.get("body", "")
             tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts = reltime(item.get("id", ""))
-
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
+            ts = reltime(item.get("id", ""))
             tag_html = " ".join(
                 f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
                 for t in tags
             )
 
-            with st.container():
-                card = (
-                    "<div class='card'><details open>"
-                    f"<summary><h4>{title}</h4></summary>"
-                )
-                if summary:
-                    card += f"<p>{summary}</p>"
-                if body:
-                    card += f"<details><summary>Read more</summary>{body}</details>"
-                card += f"<div class='tags'>{tag_html}</div>"
-                if ts:
-                    card += f"<small>{ts}</small>"
-                card += "</details></div>"
-                st.markdown(card, unsafe_allow_html=True)
+            row_id = f"row_{item['id'].replace('-', '')}"
+            html = (
+                f"<input type='checkbox' id='{row_id}' hidden>"
+                f"<label for='{row_id}' class='row'>"
+                    f"<div class='row-l'><h4>{escape(title)}</h4><p>{escape(summary)}</p></div>"
+                    f"<div class='row-r'>{tag_html}<br><small>{ts}</small></div>"
+                f"</label>"
+                f"<div class='row-body' style='display:none' markdown='1'>{body}</div>"
+                f"<script>const cb=document.getElementById('{row_id}');cb.addEventListener('change',e=>{{cb.nextElementSibling.nextElementSibling.style.display = cb.checked?'block':'none';}});</script>"
+            )
+            st.markdown(html, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No items yet")

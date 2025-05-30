@@ -13,19 +13,18 @@ except Exception:  # pragma: no cover
         pass
 import redis
 
-# Backward-compatible rerun function
+# Backward-compatible rerun helper
 rerun = getattr(st, "rerun", getattr(st, "experimental_rerun"))
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
-FEED_LEN = int(os.getenv("FEED_LEN", "100"))
+FEED_LEN   = int(os.getenv("FEED_LEN", "100"))
 TOPICS = [
     "politics", "business", "technology", "sports", "health",
     "climate", "science", "education", "entertainment", "finance",
 ]
 
-
-def rconn():
-    """Return a connected Redis client."""
+# ────────── Redis helpers ─────────────────────────────────────────
+def rconn() -> redis.Redis:
     while True:
         try:
             r = redis.from_url(VALKEY_URL, decode_responses=True)
@@ -34,11 +33,9 @@ def rconn():
         except Exception:
             time.sleep(1)
 
-
 def latest_uid(r: redis.Redis) -> int:
     val = r.get("latest_uid")
     return int(val) if val is not None else 0
-
 
 def user_data(r: redis.Redis, uid: int):
     pipe = r.pipeline()
@@ -54,25 +51,22 @@ def user_data(r: redis.Redis, uid: int):
             items.append({"summary": raw})
     return interests, items
 
-
 def topic_data(r: redis.Redis, slug: str):
     raw = r.xrevrange(f"topic:{slug}", count=FEED_LEN)
-    items = []
+    out = []
     for mid, fields in raw:
         if "data" in fields:
             try:
-                item = json.loads(fields["data"])
+                doc = json.loads(fields["data"])
             except Exception:
-                item = {"title": fields["data"]}
+                doc = {"title": fields["data"]}
         else:
-            item = fields
-        item.setdefault("id", mid)
-        items.append(item)
-    return items
+            doc = fields
+        doc.setdefault("id", mid)
+        out.append(doc)
+    return out
 
-
-# ------------------------ Streamlit UI -------------------------------------
-
+# ────────── Streamlit UI setup ────────────────────────────────────
 st.set_page_config(page_title="Valkey Demo", layout="centered")
 
 css_path = pathlib.Path("assets/style.css")
@@ -82,7 +76,7 @@ if css_path.exists():
 st.markdown(
     """
     <style>
-    .tag-int {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
+    .tag-int   {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
     .tag-topic {background:#ffeb3b;color:#000;border-radius:4px;padding:2px 6px;margin-right:4px}
     </style>
     """,
@@ -92,10 +86,12 @@ st.markdown(
 r = rconn()
 tab_user, tab_topic = st.tabs(["User", "Topic"])
 
+# ────────── User tab ─────────────────────────────────────────────
 with tab_user:
     lu = latest_uid(r)
     if lu == 0:
         st.warning("Seeder not running…")
+
     if "uid" not in st.session_state:
         st.session_state.uid = lu or 0
     uid = st.number_input("User ID", key="uid", step=1, min_value=0)
@@ -110,38 +106,48 @@ with tab_user:
 
     st.subheader("Interests")
     if interests:
-        tags = " ".join(
-            f"<span class='tag-int'>{t}</span>" for t in interests
+        tags_html = " ".join(
+            f"<span class='tag-int'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+            for t in interests
         )
-        st.markdown(tags, unsafe_allow_html=True)
+        st.markdown(tags_html, unsafe_allow_html=True)
     else:
         st.write("No interests found")
 
+    # ------------- Timeline -------------------------------------------------
     st.subheader("Timeline")
     if feed:
         st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
         for item in feed:
-            title = item.get("title", "")
+            title   = item.get("title", "")
             summary = item.get("summary")
-            body = item.get("body", "")
-            tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts_raw = item.get("id")
+            body    = item.get("body", "")
+            tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
+            ts_raw  = item.get("id", "")
             ts = ""
             if ts_raw:
                 try:
-                    ts_part = ts_raw.split("-")[0]
-                    ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
+                    ts_ms  = int(ts_raw.split("-")[0])
+                    ts_dt  = datetime.datetime.utcfromtimestamp(ts_ms / 1000)
                     ts = ts_dt.isoformat() + "Z"
                 except Exception:
-                    ts = ""
+                    pass
 
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
-            tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
+            # clickable tags
+            tag_html = " ".join(
+                f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+                for t in tags
+            )
 
+            # card rendering
             with st.container():
-                card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
+                card  = (
+                    "<div class='card'><details open>"
+                    f"<summary><h4>{title}</h4></summary>"
+                )
                 if summary:
                     card += f"<p>{summary}</p>"
                 if body:
@@ -155,9 +161,11 @@ with tab_user:
     else:
         st.info("No articles yet – try another uid or wait a bit…")
 
+# ────────── Topic tab ────────────────────────────────────────────
 with tab_topic:
     if "topic" not in st.session_state:
         st.session_state.topic = TOPICS[0]
+
     slug = st.selectbox("Topic", TOPICS, index=TOPICS.index(st.session_state.topic), key="topic_sel")
     if slug != st.session_state.topic:
         st.session_state.topic = slug
@@ -169,27 +177,33 @@ with tab_topic:
     if items:
         st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
         for item in items:
-            title = item.get("title", "")
+            title   = item.get("title", "")
             summary = item.get("summary")
-            body = item.get("body", "")
-            tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts_raw = item.get("id")
+            body    = item.get("body", "")
+            tags    = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
+            ts_raw  = item.get("id", "")
             ts = ""
             if ts_raw:
                 try:
-                    ts_part = ts_raw.split("-")[0]
-                    ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
+                    ts_ms = int(ts_raw.split("-")[0])
+                    ts_dt = datetime.datetime.utcfromtimestamp(ts_ms / 1000)
                     ts = ts_dt.isoformat() + "Z"
                 except Exception:
-                    ts = ""
+                    pass
 
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
-            tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
+            tag_html = " ".join(
+                f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+                for t in tags
+            )
 
             with st.container():
-                card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
+                card = (
+                    "<div class='card'><details open>"
+                    f"<summary><h4>{title}</h4></summary>"
+                )
                 if summary:
                     card += f"<p>{summary}</p>"
                 if body:
@@ -203,5 +217,5 @@ with tab_topic:
     else:
         st.info("No items yet")
 
-# auto refresh every 5 seconds
+# auto-refresh every 5 seconds
 st_autorefresh(interval=5000, key="refresh")

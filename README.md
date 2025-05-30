@@ -24,6 +24,16 @@ The base image installs a CPU build of PyTorch.  To enable CUDA support
 during the build, pass `--build-arg USE_CUDA=1` when invoking Docker
 Compose, e.g. `docker compose build --build-arg USE_CUDA=1`.
 
+### GPU acceleration
+
+The `enrich` service will automatically run on GPU when a CUDA device is
+available.  This behaviour can be controlled via the `ENRICH_USE_CUDA`
+environment variable:
+
+* `auto` (default) – use GPU if `torch.cuda.is_available()`
+* `1` – force GPU usage
+* `0` – force CPU usage
+
 This will build the containers, generate a small dataset and launch the services defined in `docker-compose.yml`.  When the stack is up you can explore:
 
 * **Grafana** dashboards at <http://localhost:3000>

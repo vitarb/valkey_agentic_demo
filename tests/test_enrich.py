@@ -17,8 +17,24 @@ def load_module(monkeypatch):
             return DummyPipe({"summary_text": "sum"})
         return DummyPipe({})
     monkeypatch.setattr("transformers.pipeline", fake_pipeline)
+    if "torch" not in sys.modules:
+        import types
+        dummy = types.SimpleNamespace()
+        dummy.cuda = types.SimpleNamespace(is_available=lambda: False)
+        sys.modules["torch"] = dummy
     sys.modules.pop("agents.enrich", None)
     return importlib.import_module("agents.enrich")
+
+
+@pytest.mark.parametrize("available,expected", [(True, 0), (False, -1)])
+def test_device_auto(monkeypatch, available, expected):
+    monkeypatch.delenv("ENRICH_USE_CUDA", raising=False)
+    import types
+    dummy = types.SimpleNamespace()
+    dummy.cuda = types.SimpleNamespace(is_available=lambda: available)
+    monkeypatch.setitem(sys.modules, "torch", dummy)
+    mod = load_module(monkeypatch)
+    assert mod.DEVICE == expected
 
 @pytest.mark.asyncio
 async def test_rconn(monkeypatch):

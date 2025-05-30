@@ -52,24 +52,14 @@ panels = [
     panel("Fan-out backlog", ["topic_stream_len"], 1, 1),
     panel("Fan-out msgs / s", ["sum(rate(fan_out_total[1m]))"], 2, 0),
     panel("Reader pops / s", ["rate(reader_pops_total[1m])"], 2, 1),
-    panel(
-        "Summariser p95 s",
-        ["histogram_quantile(0.95, rate(summariser_latency_seconds_bucket[2m]))"],
-        3,
-        0,
-    ),
+    # summariser panel removed - summariser service deprecated
     panel("Feeds backlog", ["feed_backlog"], 3, 1),
-    panel("Valkey ops / s", ["rate(redis_commands_processed_total[1m])"], 4, 0),
-    panel("Valkey mem MB", ["redis_memory_used_bytes/1024/1024"], 4, 1),
+    panel("Valkey ops / s", ["rate(redis_total_commands_processed[1m])"], 4, 0),
+    panel("Valkey mem MB", ["redis_memory_used_bytes / 1024 / 1024"], 4, 1),
     panel("Replay topic msgs / s", ["rate(producer_msgs_total[1m])"], 5, 0, stack=True),
     panel("Enrich out by topic / s", ["rate(enrich_out_total[1m])"], 5, 1, stack=True),
     panel("Fan-out by topic / s", ["rate(fan_out_total[1m])"], 6, 0, stack=True),
-    panel(
-        "Valkey p95 us",
-        ["histogram_quantile(0.95, rate(redis_command_call_duration_seconds_bucket[2m]))"],
-        6,
-        1,
-    ),
+    # dropped valkey p95 panel - exporter lacks latency histogram
     panel(
         "Valkey p99 us",
         ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m]))"],

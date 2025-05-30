@@ -8,6 +8,7 @@ service can deliver it to user feeds.
 Environment variables:
     ENRICH_BATCH     – articles processed per batch (default: 32)
     NEWS_RAW_MAXLEN  – max items to retain in news_raw (default: 5000)
+    ENRICH_USE_CUDA  – set "auto", "1" or "0" to control GPU usage
 
 Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
 but you can swap it out for a simpler heuristic if desired.
@@ -22,6 +23,15 @@ import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
+import torch
+
+USE_CUDA_ENV = os.getenv("ENRICH_USE_CUDA", "auto").lower()
+if USE_CUDA_ENV == "1":
+    DEVICE = 0
+elif USE_CUDA_ENV == "0":
+    DEVICE = -1
+else:
+    DEVICE = 0 if torch.cuda.is_available() else -1
 
 # ────────── Configuration ─────────────────────────────────────────
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
@@ -48,8 +58,9 @@ async def rconn() -> redis.Redis:
 classifier = pipeline(
     "zero-shot-classification",
     model="typeform/distilbert-base-uncased-mnli",
-    device=-1,                 # CPU only (change to 0 for CUDA)
+    device=DEVICE,
 )
+print(f"[enrich] classifier device={DEVICE}")
 
 # ────────── Metrics ───────────────────────────────────────────────
 IN_MSG  = Counter("enrich_in_total",  "Raw messages consumed")

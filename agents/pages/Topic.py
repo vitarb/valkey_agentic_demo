@@ -2,6 +2,7 @@ import os
 import json
 import time
 import pathlib
+import datetime
 
 import streamlit as st
 try:
@@ -99,10 +100,21 @@ if items:
     )
     for itm in items:
         title   = itm.get("title", "")
-        summary = itm.get("summary") or (itm.get("body", "")[:300] + "…")
+        summary = itm.get("summary")
         body    = itm.get("body", "")
         tags    = itm.get("tags") or ([itm.get("topic")] if itm.get("topic") else [])
-        ts      = itm.get("id", "")
+        ts_raw  = itm.get("id")
+        ts = ""
+        if ts_raw:
+            try:
+                ts_part = ts_raw.split("-")[0]
+                ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
+                ts = ts_dt.isoformat() + "Z"
+            except Exception:
+                ts = ""
+
+        if not summary:
+            summary = (body[:250] + "…") if body else ""
 
         tag_html = " ".join(f"<span>{t}</span>" for t in tags)
 

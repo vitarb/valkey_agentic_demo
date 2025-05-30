@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import datetime
 import random
 import pathlib
 
@@ -121,10 +122,21 @@ with tab_user:
         st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
         for item in feed:
             title = item.get("title", "")
-            summary = item.get("summary", "")
+            summary = item.get("summary")
             body = item.get("body", "")
             tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts = item.get("id", "")
+            ts_raw = item.get("id")
+            ts = ""
+            if ts_raw:
+                try:
+                    ts_part = ts_raw.split("-")[0]
+                    ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
+                    ts = ts_dt.isoformat() + "Z"
+                except Exception:
+                    ts = ""
+
+            if not summary:
+                summary = (body[:250] + "…") if body else ""
 
             title_line = f"**{title}**"
             with st.expander(title_line):
@@ -156,10 +168,21 @@ with tab_topic:
         st.markdown("<div style='max-height:400px;overflow-y:auto'>", unsafe_allow_html=True)
         for item in items:
             title = item.get("title", "")
-            summary = item.get("summary", "")
+            summary = item.get("summary")
             body = item.get("body", "")
             tags = item.get("tags") or ([item.get("topic")] if item.get("topic") else [])
-            ts = item.get("id", "")
+            ts_raw = item.get("id")
+            ts = ""
+            if ts_raw:
+                try:
+                    ts_part = ts_raw.split("-")[0]
+                    ts_dt = datetime.datetime.utcfromtimestamp(int(ts_part) / 1000)
+                    ts = ts_dt.isoformat() + "Z"
+                except Exception:
+                    ts = ""
+
+            if not summary:
+                summary = (body[:250] + "…") if body else ""
 
             title_line = f"**{title}**"
             with st.expander(title_line):

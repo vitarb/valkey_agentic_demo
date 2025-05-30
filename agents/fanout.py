@@ -62,6 +62,8 @@ async def main():
                             payload = {"summary": f["data"]}
                     else:
                         payload = f
+                    summary = payload.get("summary") or payload.get("body", "")[:250]
+                    payload["summary"] = summary
                     users = await r.zrange(f"user:topic:{t}", 0, -1)
                     await r.evalsha(
                         sha, 1, stream, mid, t, json.dumps(payload), FEED_MAX_LEN, TOPIC_MAX_LEN

@@ -132,7 +132,7 @@ if feed:
 
         # ---------- card rendering -----------------------------------------
         with st.container():
-            card = f"<div class='card'><h4>{title}</h4>"
+            card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
             if summary:
                 card += f"<p>{summary}</p>"
             if body:
@@ -140,7 +140,7 @@ if feed:
             card += f"<div class='tags'>{tag_html}</div>"
             if ts:
                 card += f"<small>{ts}</small>"
-            card += "</div>"
+            card += "</details></div>"
             st.markdown(card, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:

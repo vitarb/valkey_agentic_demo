@@ -63,16 +63,7 @@ css_path = pathlib.Path("assets/style.css")
 if css_path.exists():
     st.markdown(css_path.read_text(), unsafe_allow_html=True)
 
-# sidebar navigation & refresh slider ---------------------------------------
-st.sidebar.page_link("agents/ui.py",                    label="📰 User feed")
-try:
-    st.sidebar.page_link("agents/pages/Topic.py", label="🏷️ Topic stream")
-except FileNotFoundError:
-    pass
-
-interval = st.sidebar.slider("Refresh (sec)", 1, 15, 5)
-st_autorefresh(interval * 1000, key="auto_refresh")
-
+# refresh setup --------------------------------------------------------------
 # ---------------------------------------------------------------------------
 r   = rconn()
 lu  = latest_uid(r)
@@ -82,15 +73,22 @@ if lu == 0:
 if "uid" not in st.session_state:
     st.session_state.uid = lu or 0
 
-uid = st.number_input("User ID", key="uid", step=1, min_value=0)
+# input/refresh controls ----------------------------------------------------
+cols = st.columns(4)
+
+uid = cols[0].number_input("User ID", key="uid", step=1, min_value=0)
 
 def _set_random_uid():
     st.session_state.uid = random.randint(0, lu) if lu else 0
 
 if lu:
-    st.button("Random user", on_click=_set_random_uid)
+    cols[1].button("Random user", on_click=_set_random_uid)
+else:
+    cols[1].markdown("&nbsp;")
 
-st.button("Refresh", on_click=st.rerun)
+cols[2].button("Refresh", on_click=st.rerun)
+interval = cols[3].slider("Refresh (sec)", 1, 15, 5)
+st_autorefresh(interval * 1000, key="auto_refresh")
 
 # ---------------------------------------------------------------------------
 interests, feed = user_data(r, uid)

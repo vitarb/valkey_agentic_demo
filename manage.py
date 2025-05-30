@@ -57,6 +57,15 @@ export PATH=$PATH:/usr/local/bin
 /usr/local/bin/docker-compose pull 2>&1 | tee docker-compose.log
 /usr/local/bin/docker-compose build --build-arg USE_CUDA=1 2>&1 | tee -a docker-compose.log
 /usr/local/bin/docker-compose up -d   2>&1 | tee -a docker-compose.log
+# Wait for Grafana to come up (max 5 min)
+start=$(date +%s)
+until curl -sf http://localhost:3000/api/health; do
+    if [ $(($(date +%s) - start)) -ge 300 ]; then
+        docker-compose logs grafana | tail -n 50 | sudo tee -a /var/log/user-data.log || true
+        break
+    fi
+    sleep 5
+done
 EOSU
 """
 

@@ -111,7 +111,8 @@ with tab_user:
     st.subheader("Interests")
     if interests:
         tags = " ".join(
-            f"<span class='tag-int'>{t}</span>" for t in interests
+            f"<span class='tag-int'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+            for t in interests
         )
         st.markdown(tags, unsafe_allow_html=True)
     else:
@@ -142,7 +143,10 @@ with tab_user:
             with st.expander(title_line):
                 st.markdown(body)
 
-            tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
+            tag_html = " ".join(
+                f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+                for t in tags
+            )
             st.markdown(tag_html, unsafe_allow_html=True)
             if summary:
                 st.markdown(summary)
@@ -188,7 +192,10 @@ with tab_topic:
             with st.expander(title_line):
                 st.markdown(body)
 
-            tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
+            tag_html = " ".join(
+                f"<span class='tag-topic'><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+                for t in tags
+            )
             st.markdown(tag_html, unsafe_allow_html=True)
             if summary:
                 st.markdown(summary)

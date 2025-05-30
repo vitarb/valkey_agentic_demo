@@ -123,7 +123,10 @@ if items:
         if not summary:
             summary = (body[:250] + "…") if body else ""
 
-        tag_html = " ".join(f"<span>{t}</span>" for t in tags)
+        tag_html = " ".join(
+            f"<span><a href='?page=Topic&name={t}' target='_self'>{t}</a></span>"
+            for t in tags
+        )
 
         # ---------- card rendering -----------------------------------------
         with st.container():

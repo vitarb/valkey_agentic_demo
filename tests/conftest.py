@@ -26,9 +26,10 @@ dummy_asyncio = types.ModuleType("redis.asyncio")
 async def dummy_from_url(*a, **k):
     raise RuntimeError("from_url not patched")
 dummy_asyncio.from_url = dummy_from_url
-
 class DummyExc(Exception):
     pass
+
+dummy_asyncio.ResponseError = DummyExc
 
 dummy_exceptions = types.SimpleNamespace(ConnectionError=DummyExc, ResponseError=DummyExc)
 

@@ -23,27 +23,34 @@ DATA_SRC = (
 (ROOT / "grafana/provisioning/datasources/prom.yaml").write_text(DATA_SRC)
 
 # helper ----------------------------------------------------------
-def panel(title, exprs, row, col):
+def panel(title, exprs, row, col, stack=False):
     w, h = 12, 8
     x = col * w
     y = row * h
     tgts = [{"expr": e, "refId": chr(65+i)} for i, e in enumerate(exprs)]
+    opts = {"legend": {"showLegend": stack}}
+    if stack:
+        opts["stacking"] = {"mode": "normal"}
     return {
         "type": "timeseries",
         "title": title,
         "datasource": {"uid": "prom"},
         "targets": tgts,
         "gridPos": {"x": x, "y": y, "w": w, "h": h},
-        "options": {"legend": {"showLegend": False}}
+        "options": opts,
     }
 
 panels = [
-    panel("Producer msgs / s", ["rate(producer_msgs_total[1m])"], 0, 0),
+    panel("Producer msgs / s", ["sum(rate(producer_msgs_total[1m]))"], 0, 0),
     panel("news_raw backlog", ["news_raw_len"], 0, 1),
-    panel("Enrich msgs / s",
-          ["rate(enrich_in_total[1m])", "rate(enrich_out_total[1m])"], 1, 0),
+    panel(
+        "Enrich msgs / s",
+        ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"],
+        1,
+        0,
+    ),
     panel("Fan-out backlog", ["topic_stream_len"], 1, 1),
-    panel("Fan-out msgs / s", ["rate(fan_out_total[1m])"], 2, 0),
+    panel("Fan-out msgs / s", ["sum(rate(fan_out_total[1m]))"], 2, 0),
     panel("Reader pops / s", ["rate(reader_pops_total[1m])"], 2, 1),
     panel(
         "Summariser p95 s",
@@ -54,6 +61,21 @@ panels = [
     panel("Feeds backlog", ["feed_backlog"], 3, 1),
     panel("Valkey ops / s", ["rate(redis_commands_processed_total[1m])"], 4, 0),
     panel("Valkey mem MB", ["redis_memory_used_bytes/1024/1024"], 4, 1),
+    panel("Replay topic msgs / s", ["rate(producer_msgs_total[1m])"], 5, 0, stack=True),
+    panel("Enrich out by topic / s", ["rate(enrich_out_total[1m])"], 5, 1, stack=True),
+    panel("Fan-out by topic / s", ["rate(fan_out_total[1m])"], 6, 0, stack=True),
+    panel(
+        "Valkey p95 us",
+        ["histogram_quantile(0.95, rate(redis_command_call_duration_seconds_bucket[2m]))"],
+        6,
+        1,
+    ),
+    panel(
+        "Valkey p99 us",
+        ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m]))"],
+        7,
+        0,
+    ),
 ]
 
 dashboard = {

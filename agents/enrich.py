@@ -64,7 +64,7 @@ print(f"[enrich] classifier device={DEVICE}")
 
 # ────────── Metrics ───────────────────────────────────────────────
 IN_MSG  = Counter("enrich_in_total",  "Raw messages consumed")
-OUT_MSG = Counter("enrich_out_total", "Messages routed to topic streams")
+OUT_MSG = Counter("enrich_out_total", "Messages routed to topic streams", ["topic"])
 LAT     = Histogram("enrich_classifier_latency_seconds", "Classification latency")
 BACKLOG = Gauge("news_raw_len", "Length of news_raw stream")
 TRIM_OPS = Gauge("news_raw_trim_ops_total", "Trimming operations on news_raw")
@@ -131,6 +131,7 @@ async def main() -> None:
                 )
                 pipe.xadd(stream, {"data": payload})
                 pipe.xtrim(stream, maxlen=10_000)
+                OUT_MSG.labels(topic=d["topic"]).inc()
             await pipe.execute()
 
             # Acknowledge and record metrics -----------------------------------------
@@ -138,7 +139,6 @@ async def main() -> None:
             await r.xtrim(SOURCE, maxlen=NEWS_RAW_MAXLEN, approximate=False)
             TRIM_OPS.inc()
             IN_MSG.inc(len(docs))
-            OUT_MSG.inc(len(docs))
             BACKLOG.set(await r.xlen(SOURCE))
 
         except RedisConnError:

@@ -13,7 +13,7 @@ FEED_MAX_LEN = int(os.getenv("FEED_LEN", "100"))      # per-user feed length
 TOPIC_MAX_LEN = int(os.getenv("TOPIC_MAXLEN", "10000"))  # topic stream length
 
 IN  = Counter("fan_in_total",  "")
-OUT = Counter("fan_out_total", "")
+OUT = Counter("fan_out_total", "", ["topic"])
 Q_LEN = Gauge("topic_stream_len", "Length of each topic stream", ["topic"])
 FEED_PUSH = Counter("feed_push_total", "")
 FEED_LEN = Gauge("feed_len", "", ["uid"])
@@ -70,7 +70,7 @@ async def main():
                     )
                     TRIM_OPS.inc()
                     await r.xack(stream, grp, mid)
-                    IN.inc(); OUT.inc()
+                    IN.inc(); OUT.labels(topic=t).inc()
 
                     if users:
                         pipe = r.pipeline()

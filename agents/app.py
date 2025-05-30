@@ -138,17 +138,19 @@ with tab_user:
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
-            title_line = f"**{title}**"
-            with st.expander(title_line):
-                st.markdown(body)
-
             tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
-            st.markdown(tag_html, unsafe_allow_html=True)
-            if summary:
-                st.markdown(summary)
-            if ts:
-                st.markdown(ts)
-            st.markdown("<hr>", unsafe_allow_html=True)
+
+            with st.container():
+                card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
+                if summary:
+                    card += f"<p>{summary}</p>"
+                if body:
+                    card += f"<details><summary>Read more</summary>{body}</details>"
+                card += f"<div class='tags'>{tag_html}</div>"
+                if ts:
+                    card += f"<small>{ts}</small>"
+                card += "</details></div>"
+                st.markdown(card, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No articles yet – try another uid or wait a bit…")
@@ -184,17 +186,19 @@ with tab_topic:
             if not summary:
                 summary = (body[:250] + "…") if body else ""
 
-            title_line = f"**{title}**"
-            with st.expander(title_line):
-                st.markdown(body)
-
             tag_html = " ".join(f"<span class='tag-topic'>{t}</span>" for t in tags)
-            st.markdown(tag_html, unsafe_allow_html=True)
-            if summary:
-                st.markdown(summary)
-            if ts:
-                st.markdown(ts)
-            st.markdown("<hr>", unsafe_allow_html=True)
+
+            with st.container():
+                card  = f"<div class='card'><details open><summary><h4>{title}</h4></summary>"
+                if summary:
+                    card += f"<p>{summary}</p>"
+                if body:
+                    card += f"<details><summary>Read more</summary>{body}</details>"
+                card += f"<div class='tags'>{tag_html}</div>"
+                if ts:
+                    card += f"<small>{ts}</small>"
+                card += "</details></div>"
+                st.markdown(card, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No items yet")

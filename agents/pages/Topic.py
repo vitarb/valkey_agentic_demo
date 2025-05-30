@@ -60,11 +60,7 @@ css_path = pathlib.Path("assets/style.css")
 if css_path.exists():
     st.markdown(css_path.read_text(), unsafe_allow_html=True)
 
-# sidebar refresh slider ----------------------------------------------------
-sidebar = getattr(st, "sidebar", st)
-slider  = getattr(sidebar, "slider", None)
-interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
-st_autorefresh(interval * 1000, key="auto_refresh")
+# refresh slider ------------------------------------------------------------
 
 r = rconn()
 
@@ -80,8 +76,19 @@ except AttributeError:                  # older fallback
 
 slug = get_q("name", TOPICS[0])
 
-# topic selector keeps URL in sync
-changed = st.selectbox("Topic", TOPICS, index=TOPICS.index(slug), key="topic_sel")
+# topic selector and refresh slider ----------------------------------------
+if hasattr(st, "columns"):
+    col_sel, col_slide = st.columns([3, 1])
+else:
+    col_sel = col_slide = st
+
+changed = col_sel.selectbox(
+    "Topic", TOPICS, index=TOPICS.index(slug), key="topic_sel"
+)
+slider = getattr(col_slide, "slider", None)
+interval = slider("Refresh (sec)", 1, 15, 5) if slider else 5
+st_autorefresh(interval * 1000, key="auto_refresh")
+
 if changed != slug:
     set_q(name=changed)
     st.rerun()

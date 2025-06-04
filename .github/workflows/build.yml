@@ -13,5 +13,15 @@ jobs:
     steps:
       - name: Verify Valkey JSON module present
         run: |
-          docker run --rm valkey/valkey-extensions:8.1-bookworm \
-            valkey-cli MODULE LIST | grep -q valkeyjson
+          docker run -d --name valkey-check valkey/valkey-extensions:8.1-bookworm
+          for i in {1..5}; do
+            if docker exec valkey-check valkey-cli MODULE LIST | grep -q valkeyjson; then
+              docker rm -f valkey-check
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Valkey JSON module missing or server failed to start"
+          docker logs valkey-check || true
+          docker rm -f valkey-check
+          exit 1

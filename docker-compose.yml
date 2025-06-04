@@ -4,10 +4,23 @@ services:
     ports: ["6379:6379"]
 
   base: &base
-    build: .
+    build:
+      context: .
+      args:
+        USE_CUDA: 0
     volumes: ["./data:/app/data:ro"]
     environment:
       - VALKEY_URL=redis://valkey:6379
+
+  base_gpu: &base_gpu
+    build:
+      context: .
+      args:
+        USE_CUDA: 1
+    volumes: ["./data:/app/data:ro"]
+    environment:
+      - VALKEY_URL=redis://valkey:6379
+    profiles: ["gpu"]
 
 
   prometheus:
@@ -27,10 +40,17 @@ services:
   enrich:
     <<: *base
     command: python agents/enrich.py
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
     depends_on: [valkey, prometheus]
     deploy: {replicas: 2}
+    profiles: ["cpu"]
+
+  enrich_gpu:
+    <<: *base_gpu
+    command: python agents/enrich.py
+    depends_on: [valkey, prometheus]
+    deploy: {replicas: 2}
+    runtime: nvidia
+    profiles: ["gpu"]
 
   fanout:
     <<: *base

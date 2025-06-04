@@ -11,3 +11,4 @@ scrape_configs:
         - replay:9114
         - valkey_exporter:9121
         - latency_exporter:9122
+        - dashboard:8501

@@ -15,7 +15,7 @@ jobs:
         run: |
           docker run -d --name valkey-check valkey/valkey-extensions:8.1-bookworm
           for i in {1..5}; do
-            if docker exec valkey-check valkey-cli MODULE LIST | grep -q valkeyjson; then
+            if docker exec valkey-check valkey-cli MODULE LIST | grep -q json; then
               docker rm -f valkey-check
               exit 0
             fi

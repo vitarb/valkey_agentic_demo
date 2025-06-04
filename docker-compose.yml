@@ -3,7 +3,7 @@ services:
     image: valkey/valkey-extensions:8.1-bookworm
     ports: ["6379:6379"]
     healthcheck:
-      test: ["CMD", "valkey-cli", "MODULE", "LIST", "|", "grep", "-q", "valkeyjson"]
+      test: ["CMD", "valkey-cli", "MODULE", "LIST", "|", "grep", "-q", "json"]
       interval: 5s
       retries: 5
 

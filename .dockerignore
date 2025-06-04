@@ -1,3 +1,5 @@
-tests/
-data/
+.git
+tests
+data
 *.pyc
+__pycache__/

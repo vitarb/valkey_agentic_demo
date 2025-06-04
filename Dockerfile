@@ -7,6 +7,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+ENV PYTHONPATH=/install/lib/python3.12/site-packages
 
 ARG USE_CUDA=0
 RUN if [ "$USE_CUDA" = "1" ]; then \

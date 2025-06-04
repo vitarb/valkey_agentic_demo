@@ -4,7 +4,7 @@ SERVICES = enrich fanout reader replay dashboard grafana ui
 SEED     = seed
 
 dev:
-	docker compose up --build -d
+	 docker compose --profile cpu up --build -d
 
 down:
 	docker compose down

@@ -20,6 +20,8 @@ The easiest way to spin everything up is with Docker Compose.  Make sure Docker 
 make dev
 ```
 
+The stack relies on `valkey/valkey-extensions:8.1-bookworm`, which includes the JSON, Bloom and Search modules out of the box.
+
 The demo runs CPU-only by default. To use the CUDA build simply run
 
 ```bash
@@ -60,7 +62,7 @@ make test
 
 * `agents/` – microservices forming the data pipeline
 * `tools/`  – helper scripts for bootstrapping demo data
-* `valkey/` – Valkey Docker image with JSON module
+* `valkey/valkey-extensions` image with JSON, Bloom and Search modules
 * `demo.sh` and `manage.py` – utilities for launching a demo EC2 host
 
 To lower backlog curves, set `TOPIC_MAXLEN=2000` in `docker-compose.yml`.

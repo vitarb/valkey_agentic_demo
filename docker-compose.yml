@@ -1,7 +1,11 @@
 services:
   valkey:
-    build: {context: ./valkey, dockerfile: Dockerfile}
+    image: valkey/valkey-extensions:8.1-bookworm
     ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "MODULE", "LIST", "|", "grep", "-q", "valkeyjson"]
+      interval: 5s
+      retries: 5
 
   base: &base
     build:

@@ -7,3 +7,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - run: docker compose --profile cpu build
+
+  verify-valkey:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Valkey JSON module present
+        run: |
+          docker run --rm valkey/valkey-extensions:8.1-bookworm \
+            valkey-cli MODULE LIST | grep -q valkeyjson

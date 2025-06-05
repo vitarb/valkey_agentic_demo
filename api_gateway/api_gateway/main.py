@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, Depends
+from starlette.websockets import WebSocketDisconnect
 from .stream import IStream
 from .redis_stream import RedisStream
 import os
@@ -21,11 +22,17 @@ def get_stream() -> IStream:
 @app.websocket("/ws/feed/{uid}")
 async def feed_ws(ws: WebSocket, uid: str, s: IStream = Depends(get_stream)):
     await ws.accept()
-    async for item in s.subscribe(f"feed:{uid}"):
-        await ws.send_json(item)
+    try:
+        async for item in s.subscribe(f"feed:{uid}"):
+            await ws.send_json(item)
+    except WebSocketDisconnect:
+        pass
 
 @app.websocket("/ws/topic/{slug}")
 async def topic_ws(ws: WebSocket, slug: str, s: IStream = Depends(get_stream)):
     await ws.accept()
-    async for item in s.subscribe(f"topic:{slug}"):
-        await ws.send_json(item)
+    try:
+        async for item in s.subscribe(f"topic:{slug}"):
+            await ws.send_json(item)
+    except WebSocketDisconnect:
+        pass

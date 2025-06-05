@@ -7,7 +7,7 @@ interface Message {
 function useSocket(path: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost${path}`);
+    const ws = new WebSocket(`ws://localhost:8000${path}`);
     ws.onmessage = (ev) => setMessages((m) => [...m, JSON.parse(ev.data)]);
     return () => ws.close();
   }, [path]);

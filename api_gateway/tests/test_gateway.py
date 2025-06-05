@@ -22,3 +22,10 @@ async def test_topic_endpoint(dummy_stream):
     with client.websocket_connect('/ws/topic/news') as ws:
         assert ws.receive_json() == {'text': 'hello'}
         assert ws.receive_json() == {'text': 'world'}
+
+
+def test_websockets_installed():
+    """Ensure the websockets library is available for uvicorn."""
+    import importlib.util
+
+    assert importlib.util.find_spec("websockets") is not None

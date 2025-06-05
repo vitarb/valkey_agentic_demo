@@ -4,7 +4,7 @@ import { Server } from 'mock-socket';
 const servers: Server[] = [];
 
 export function setupMockServer(path: string, messages: unknown[]) {
-  const server = new Server(`ws://localhost${path}`);
+  const server = new Server(`ws://localhost:8000${path}`);
   server.on('connection', (socket) => {
     messages.forEach((m) => socket.send(JSON.stringify(m)));
   });

@@ -87,11 +87,17 @@ services:
     ports: ["8501:8501"]
     depends_on: [valkey]
 
-  ui:
-    <<: *base
-    command: streamlit run ./agents/app.py --server.port 8502 --server.address 0.0.0.0
-    ports: ["8502:8502"]
+  gateway:
+    build: ./api_gateway
+    environment:
+      - VALKEY_URL=redis://valkey:6379
+    ports: ["8000:8000"]
     depends_on: [valkey]
+
+  ui:
+    build: ./ui-react
+    ports: ["8502:8502"]
+    depends_on: [gateway]
 
   valkey_exporter:
     image: oliver006/redis_exporter:latest   # <─ official Prometheus exporter

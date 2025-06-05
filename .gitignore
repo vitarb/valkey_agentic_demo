@@ -3,3 +3,4 @@ __pycache__/\n*.pyc\n
 data
 grafana
 *.pem
+node_modules/

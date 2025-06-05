@@ -1,24 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useSocket } from './useSocket';
 
-interface Message {
+export interface Message {
+  id: string;
   text: string;
 }
 
-function socketBase(): string {
-  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${window.location.hostname}:8000`;
-}
-
-function useSocket(path: string) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  useEffect(() => {
-    const ws = new WebSocket(`${socketBase()}${path}`);
-    ws.onmessage = (ev) => setMessages((m) => [...m, JSON.parse(ev.data)]);
-    return () => ws.close();
-  }, [path]);
-  return messages;
-}
+const normalize = (raw: any): Message => ({
+  id: raw.id ?? crypto.randomUUID(),
+  text:
+    raw.text ??
+    raw.title ??
+    raw.summary ??
+    raw.body?.slice(0, 120) ??
+    '[no-content]',
+});
 
 export function useFeed(uid: string) {
-  return useSocket(`/ws/feed/${uid}`);
+  return useSocket(`/ws/feed/${uid}`, normalize);
 }

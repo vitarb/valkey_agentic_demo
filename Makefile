@@ -7,7 +7,7 @@ dev:
 	 docker compose --profile cpu up --build -d
 
 down:
-       COMPOSE_PROFILES=cpu,gpu docker compose down --remove-orphans
+	COMPOSE_PROFILES=cpu,gpu docker compose down --remove-orphans
 
 clear:
 	docker compose down -v

@@ -1,4 +1,5 @@
 import { afterEach } from 'vitest';
+import '@testing-library/jest-dom';
 import { Server } from 'mock-socket';
 
 const servers: Server[] = [];

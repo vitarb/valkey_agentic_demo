@@ -15,6 +15,7 @@ export function useSocket<T>(path: string, normalize: (raw: any) => T): SocketSt
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    setMessages([]);
     let isMounted = true;
     let ws: WebSocket | null = null;
     let retry = 0;

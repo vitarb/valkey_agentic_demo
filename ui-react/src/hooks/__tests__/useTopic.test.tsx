@@ -8,5 +8,5 @@ test('useTopic receives messages', async () => {
   await waitFor(() => {
     expect(result.current.messages).toHaveLength(1);
   });
-  expect(result.current.messages[0].text).toBe('hello');
+  expect(result.current.messages[0].title).toBe('hello');
 });

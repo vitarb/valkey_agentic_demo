@@ -23,6 +23,14 @@ class DummyRedis:
             return []
         self.sent = True
         return [(list(a[0].keys())[0], [("2", {"data": "{\"text\": \"world\"}"})])]
+    async def lrange(self, *a):
+        return ['{"text": "hello"}']
+    async def brpop(self, *a, timeout=0):
+        if self.sent:
+            await asyncio.sleep(0)
+            return None
+        self.sent = True
+        return (a[0], '{"text": "world"}')
 
 
 @pytest.fixture(autouse=True)

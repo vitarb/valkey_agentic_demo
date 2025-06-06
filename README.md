@@ -46,7 +46,7 @@ This will build the containers, generate a small dataset and launch the services
 
 * **Grafana** dashboards at <http://localhost:3000>
 * **Prometheus** metrics at <http://localhost:9090>
-* **React demo** at <http://localhost:8502>
+* **React demo** at <http://localhost:8500>
 
 To tear everything down run `make down` (or `make clear` to remove volumes).
 

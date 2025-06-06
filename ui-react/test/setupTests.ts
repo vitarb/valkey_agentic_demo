@@ -1,5 +1,8 @@
-import { afterEach } from 'vitest';
-import '@testing-library/jest-dom';
+// Only load jest-dom when running under Vitest where `expect` is provided
+// globally. Playwright tests provide their own assertion library.
+if (typeof expect !== 'undefined' && typeof (expect as any).extend === 'function') {
+  await import('@testing-library/jest-dom');
+}
 import { Server } from 'mock-socket';
 
 const servers: Server[] = [];
@@ -20,7 +23,9 @@ export function setupMockServer(path: string, messages: unknown[]) {
   } as const;
 }
 
-afterEach(() => {
-  servers.forEach((s) => s.stop());
-  servers.length = 0;
-});
+if (typeof afterEach === 'function') {
+  afterEach(() => {
+    servers.forEach((s) => s.stop());
+    servers.length = 0;
+  });
+}

@@ -68,3 +68,6 @@ make test
 To lower backlog curves, set `TOPIC_MAXLEN=2000` in `docker-compose.yml`.
 
 Feel free to modify the services or compose file to experiment further!
+
+Both `/ws/feed/{uid}` and `/ws/topic/{slug}` accept an optional `backlog` query
+parameter to stream the latest N items on connect.

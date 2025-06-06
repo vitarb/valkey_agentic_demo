@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSocket } from './useSocket';
+import { Message } from './useFeed';
 
-export interface Message {
-  id: string;
-  title: string;
-  summary?: string;
-  body?: string;
-  tags: string[];
-  topic?: string;
+export interface TopicState {
+  messages: Message[];
+  pending: Message[];
+  ready: boolean;
+  loading: boolean;
+  refresh: () => void;
 }
 
 const normalize = (raw: any): Message => ({
@@ -19,17 +19,9 @@ const normalize = (raw: any): Message => ({
   topic: raw.topic,
 });
 
-export interface FeedState {
-  messages: Message[];
-  pending: Message[];
-  ready: boolean;
-  loading: boolean;
-  refresh: () => void;
-}
-
-export function useFeed(uid: string): FeedState {
+export function useTopic(slug: string): TopicState {
   const { messages: socketMsgs, ready } = useSocket(
-    `/ws/feed/${uid}?backlog=100`,
+    `/ws/topic/${slug}?backlog=50`,
     normalize
   );
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,7 +31,7 @@ export function useFeed(uid: string): FeedState {
     setMessages([]);
     setPending([]);
     setLoading(true);
-  }, [uid]);
+  }, [slug]);
   useEffect(() => {
     if (socketMsgs.length === 0) return;
     const start = messages.length + pending.length;

@@ -35,32 +35,21 @@ async def feed_ws(
     await ws.accept()
     key = f"feed:{uid}"
     try:
-        entries = await r.xrevrange(key, "+", "-", count=backlog)
-        for _id, data in reversed(entries):
-            payload = data.get("data")
-            if payload is None:
-                await ws.send_json(data)
-            else:
-                try:
-                    await ws.send_json(json.loads(payload))
-                except Exception:
-                    await ws.send_json(payload)
-        last_id = "$"
+        entries = await r.lrange(key, 0, backlog - 1)
+        for payload in reversed(entries):
+            try:
+                await ws.send_json(json.loads(payload))
+            except Exception:
+                await ws.send_json(payload)
         while True:
-            msgs = await r.xread({key: last_id}, block=0, count=1)
-            if not msgs:
+            result = await r.brpop(key, timeout=0)
+            if not result:
                 continue
-            _, entries = msgs[0]
-            for _id, data in entries:
-                last_id = _id
-                payload = data.get("data")
-                if payload is None:
-                    await ws.send_json(data)
-                else:
-                    try:
-                        await ws.send_json(json.loads(payload))
-                    except Exception:
-                        await ws.send_json(payload)
+            _, payload = result
+            try:
+                await ws.send_json(json.loads(payload))
+            except Exception:
+                await ws.send_json(payload)
     except WebSocketDisconnect:
         pass
 

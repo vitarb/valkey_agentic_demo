@@ -11,6 +11,8 @@ replay → enrich → topic:<T> ──► fanout ──► feed:<uid>
 The replay service publishes raw news to `news_raw`. The enrich agent processes
 those articles, caching each under `doc:<id>` and fan-out streams under
 `topic:<T>`. The fanout service then distributes items to per-user feeds.
+User feeds are stored in Redis lists, while topic streams remain implemented as
+Redis streams.
 
 ## Running the demo
 

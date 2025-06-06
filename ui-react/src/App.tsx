@@ -5,8 +5,8 @@ import { PostCard } from './components/PostCard';
 import { TagChip } from './components/TagChip';
 import { toggleTopic } from './utils';
 
-export default function App() {
-  const [uid, setUid] = useState(0);
+export default function App({ initialUid }: { initialUid?: string }) {
+  const [uid, setUid] = useState(Number(initialUid ?? 0));
   const feed = useFeed(String(uid));
   const user = useUser(String(uid));
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function App() {
             ))}
           </div>
         )}
-        {feed.pending.length > 0 && (
+        {feed.pending.length > 0 && !feed.loading && (
           <button
             className="fixed top-16 right-4 bg-blue-600 text-white px-3 py-1 rounded"
             onClick={feed.refresh}
@@ -64,6 +64,7 @@ export default function App() {
               ))}
           </div>
           {!feed.ready && <div>connecting…</div>}
+          {feed.ready && feed.loading && <div className="animate-pulse">loading…</div>}
         </div>
       </div>
     </div>

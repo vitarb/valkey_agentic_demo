@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSocket } from './useSocket';
 
 export interface Message {
@@ -18,6 +19,40 @@ const normalize = (raw: any): Message => ({
   topic: raw.topic,
 });
 
-export function useFeed(uid: string) {
-  return useSocket(`/ws/feed/${uid}`, normalize);
+export interface FeedState {
+  messages: Message[];
+  pending: Message[];
+  ready: boolean;
+  refresh: () => void;
+}
+
+export function useFeed(uid: string): FeedState {
+  const { messages: socketMsgs, ready } = useSocket(`/ws/feed/${uid}`, normalize);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [pending, setPending] = useState<Message[]>([]);
+  useEffect(() => {
+    setMessages([]);
+    setPending([]);
+  }, [uid]);
+  useEffect(() => {
+    if (socketMsgs.length === 0) return;
+    const start = messages.length + pending.length;
+    const newItems = socketMsgs.slice(start);
+    if (newItems.length) {
+      setPending((p) => [...p, ...newItems]);
+    }
+  }, [socketMsgs]);
+  useEffect(() => {
+    if (messages.length === 0 && pending.length > 0) {
+      setMessages(pending);
+      setPending([]);
+    }
+  }, [pending]);
+  const refresh = () => {
+    if (pending.length) {
+      setMessages((m) => [...pending, ...m]);
+      setPending([]);
+    }
+  };
+  return { messages, pending, ready, refresh };
 }

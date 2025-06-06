@@ -128,7 +128,7 @@ def _ensure_security_group(region: str, profile: Optional[str], my_ip: str, use_
         vpcs = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}]).get('Vpcs')
         vpc = vpcs[0]['VpcId'] if vpcs else ec2.describe_vpcs()['Vpcs'][0]['VpcId']
         sg_id = ec2.create_security_group(GroupName=SG_NAME, Description='Valkey demo SG', VpcId=vpc)['GroupId']
-    ports = [3000, 9090, 8502]          # expose Streamlit UI
+    ports = [3000, 9090, 8500]          # expose React UI
     if use_ssh:
         try:
             ec2.authorize_security_group_ingress(
@@ -214,10 +214,10 @@ def cmd_up(args: argparse.Namespace):
                    'sg_id': sg_id, 'region': args.region}, fh, indent=2)
     print(
         f"\n🚀 Instance ready: {inst_id}\nSSH with port-forward:\n\n  ssh -i {PEM_FILE} -L 3000:localhost:3000 -L 9090:localhost:9090 "
-        f"-L 8502:localhost:8502 ec2-user@{pub}\n\n"
+        f"-L 8500:localhost:8500 ec2-user@{pub}\n\n"
         f"Grafana   → http://localhost:3000  (admin / admin)\n"
         f"Prometheus→ http://localhost:9090\n"
-        f"UI        → http://localhost:8502\n\n"
+        f"UI        → http://localhost:8500\n\n"
         f"When finished:  python manage.py down --run-id {run_id}\n"
     )
 

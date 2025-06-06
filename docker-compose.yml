@@ -94,9 +94,9 @@ services:
     ports: ["8000:8000"]
     depends_on: [valkey]
 
-  ui:
+  ui_web:
     build: ./ui-react
-    ports: ["8502:8502"]
+    ports: ["8500:80"]
     depends_on: [gateway]
 
   valkey_exporter:

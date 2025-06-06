@@ -1,26 +1,15 @@
 import { useState } from 'react';
 import { useFeed } from './hooks/useFeed';
-import { useTopic } from './hooks/useTopic';
+import { useUser } from './hooks/useUser';
 import { PostCard } from './components/PostCard';
-
-const TOPICS = [
-  'politics',
-  'business',
-  'technology',
-  'sports',
-  'health',
-  'climate',
-  'science',
-  'education',
-  'entertainment',
-  'finance',
-];
+import { TagChip } from './components/TagChip';
+import { toggleTopic } from './utils';
 
 export default function App() {
   const [uid, setUid] = useState(0);
   const feed = useFeed(String(uid));
-  const [slug, setSlug] = useState('technology');
-  const topic = useTopic(slug);
+  const user = useUser(String(uid));
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-[#f7f7fa]">
@@ -35,37 +24,46 @@ export default function App() {
             min={0}
             onChange={(e) => setUid(Number(e.target.value))}
           />
-          <select
-            className="border rounded px-2 py-1"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-          >
-            {TOPICS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
         </div>
       </header>
       <div className="max-w-3xl mx-auto space-y-6">
+        {user?.interests && (
+          <div className="mb-2">
+            {user.interests.map((t) => (
+              <TagChip
+                key={t}
+                label={t}
+                active={activeTopic === t}
+                onClick={() => setActiveTopic((prev) => toggleTopic(prev, t))}
+              />
+            ))}
+          </div>
+        )}
+        {feed.pending.length > 0 && (
+          <button
+            className="fixed top-16 right-4 bg-blue-600 text-white px-3 py-1 rounded"
+            onClick={feed.refresh}
+          >
+            🔄 Refresh ({feed.pending.length})
+          </button>
+        )}
         <div>
           <h2 className="font-bold mb-2">Feed</h2>
           <div className="space-y-3">
-            {feed.messages.map((m) => (
-              <PostCard key={m.id} {...m} />
-            ))}
+            {feed.messages
+              .filter((m) => !activeTopic || m.topic === activeTopic)
+              .map((m) => (
+                <PostCard
+                  key={m.id}
+                  {...m}
+                  activeTopic={activeTopic}
+                  onTagClick={(t) =>
+                    setActiveTopic((prev) => toggleTopic(prev, t))
+                  }
+                />
+              ))}
           </div>
           {!feed.ready && <div>connecting…</div>}
-        </div>
-        <div>
-          <h2 className="font-bold mb-2">Topic</h2>
-          <div className="space-y-3">
-            {topic.messages.map((m) => (
-              <PostCard key={m.id} {...m} />
-            ))}
-          </div>
-          {!topic.ready && <div>connecting…</div>}
         </div>
       </div>
     </div>

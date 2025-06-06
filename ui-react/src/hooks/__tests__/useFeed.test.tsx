@@ -1,14 +1,16 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { setupMockServer } from '../../../test/setupTests';
 import { useFeed } from '../useFeed';
 
-test('useFeed receives messages', async () => {
+test('useFeed deferred refresh', async () => {
   setupMockServer('/ws/feed/0', [{ title: 'one' }, { title: 'two' }]);
   const { result } = renderHook(() => useFeed('0'));
-  await waitFor(() => {
-    expect(result.current.messages).toHaveLength(2);
-  });
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
   expect(result.current.messages[0].title).toBe('one');
+  expect(result.current.pending).toHaveLength(1);
+  act(() => result.current.refresh());
+  expect(result.current.pending).toHaveLength(0);
+  expect(result.current.messages.map((m) => m.title)).toEqual(['two', 'one']);
 });
 
 test('useFeed re-subscribes when uid changes', async () => {

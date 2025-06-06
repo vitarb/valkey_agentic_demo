@@ -48,3 +48,24 @@ test('filter resets when navigating between users', async ({ page }) => {
   await expect(page.locator('details')).toHaveCount(10);
   await expect(page.locator('text=connecting…')).toHaveCount(0);
 });
+
+test('interest chips toggle the feed filter', async ({ page }) => {
+  server.stop();
+  server = setupMockServer(FEED1_PATH, [
+    { title: 'foo post', topic: 'foo' },
+    { title: 'bar post', topic: 'bar' }
+  ]);
+  await page.route('http://localhost:8000/user/1', async route => {
+    await route.fulfill({
+      status: 200,
+      body: JSON.stringify({ interests: ['foo', 'bar'] })
+    });
+  });
+
+  await page.goto('http://localhost:8500/user/1');
+  await expect(page.locator('details')).toHaveCount(2);
+  await page.click('text=foo');
+  await expect(page.locator('details')).toHaveCount(1);
+  await page.click('text=foo');
+  await expect(page.locator('details')).toHaveCount(2);
+});

@@ -44,18 +44,23 @@ export default function App({ initialUid }: { initialUid?: string }) {
         </div>
       </header>
       <div className="max-w-3xl mx-auto space-y-6">
-        {user?.interests && (
-          <div className="mb-2">
-            {user.interests.map((t) => (
-              <TagChip
-                key={t}
-                label={t}
-                active={topicFilter === t}
-                onClick={() => setActiveTopic((prev) => toggleTopic(prev, t))}
-              />
-            ))}
-          </div>
-        )}
+        {user?.interests?.length ? (
+          <section>
+            <h2 className="font-bold mb-1">Interests</h2>
+            <div className="mb-2">
+              {user.interests.map((t) => (
+                <TagChip
+                  key={t}
+                  label={t}
+                  active={topicFilter === t}
+                  onClick={() =>
+                    setActiveTopic((prev) => toggleTopic(prev, t))
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
         {feed.pending.length > 0 && !feed.loading && (
           <button
             className="fixed top-16 right-4 bg-blue-600 text-white px-3 py-1 rounded"

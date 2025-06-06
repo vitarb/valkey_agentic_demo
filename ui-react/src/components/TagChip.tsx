@@ -11,7 +11,7 @@ export function TagChip({ label, active, onClick }: TagChipProps) {
     'inline-flex items-center px-2 py-0.5 text-xs rounded-full mr-1 cursor-pointer';
   const cls = active
     ? `${base} bg-blue-600 text-white`
-    : `${base} bg-slate-100`;
+    : `${base} bg-slate-100 text-slate-700`;
   return (
     <span className={cls} onClick={onClick}>
       {label}

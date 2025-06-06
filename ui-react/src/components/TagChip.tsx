@@ -12,9 +12,14 @@ export function TagChip({ label, active, onClick }: TagChipProps) {
   const cls = active
     ? `${base} bg-blue-600 text-white`
     : `${base} bg-slate-100 text-slate-700`;
+  const handle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick?.();
+  };
   return (
-    <span className={cls} onClick={onClick}>
+    <button type="button" className={cls} onClick={handle}>
       {label}
-    </span>
+    </button>
   );
 }

@@ -8,5 +8,18 @@ test('useFeed receives messages', async () => {
   await waitFor(() => {
     expect(result.current.messages).toHaveLength(2);
   });
-  expect(result.current.messages[0].text).toBe('one');
+  expect(result.current.messages[0].title).toBe('one');
+});
+
+test('useFeed re-subscribes when uid changes', async () => {
+  setupMockServer('/ws/feed/0', [{ title: 'a0' }]);
+  setupMockServer('/ws/feed/1', [{ title: 'b1' }]);
+  const { result, rerender } = renderHook(({ uid }) => useFeed(uid), {
+    initialProps: { uid: '0' },
+  });
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+  expect(result.current.messages[0].title).toBe('a0');
+  rerender({ uid: '1' });
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+  expect(result.current.messages[0].title).toBe('b1');
 });

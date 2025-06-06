@@ -69,3 +69,21 @@ test('interest chips toggle the feed filter', async ({ page }) => {
   await page.click('text=foo');
   await expect(page.locator('details')).toHaveCount(2);
 });
+
+test('post tag chips filter the feed', async ({ page }) => {
+  server.stop();
+  server = setupMockServer(FEED1_PATH, [
+    { title: 'foo post', topic: 'foo' },
+    { title: 'bar post', topic: 'bar' }
+  ]);
+  await page.route('http://localhost:8000/user/1', async route => {
+    await route.fulfill({ status: 200, body: '{}' });
+  });
+
+  await page.goto('http://localhost:8500/user/1');
+  await expect(page.locator('details')).toHaveCount(2);
+  await page.click('role=button[name="foo"]');
+  await expect(page.locator('details')).toHaveCount(1);
+  await page.click('role=button[name="foo"]');
+  await expect(page.locator('details')).toHaveCount(2);
+});

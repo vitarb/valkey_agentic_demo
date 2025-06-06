@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFeed } from './hooks/useFeed';
 import { useUser } from './hooks/useUser';
 import { PostCard } from './components/PostCard';
@@ -10,6 +10,23 @@ export default function App({ initialUid }: { initialUid?: string }) {
   const feed = useFeed(String(uid));
   const user = useUser(String(uid));
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
+
+  const topicFilter = useMemo(() => {
+    if (!activeTopic) return null;
+    if (!user?.interests?.includes(activeTopic)) return null;
+    if (!feed.messages.some((m) => m.topic === activeTopic)) return null;
+    return activeTopic;
+  }, [activeTopic, user?.interests, feed.messages]);
+
+  useEffect(() => {
+    setActiveTopic(null);
+  }, [uid]);
+
+  useEffect(() => {
+    if (activeTopic && user?.interests && !user.interests.includes(activeTopic)) {
+      setActiveTopic(null);
+    }
+  }, [user?.interests, activeTopic]);
 
   return (
     <div className="min-h-screen bg-[#f7f7fa]">
@@ -33,7 +50,7 @@ export default function App({ initialUid }: { initialUid?: string }) {
               <TagChip
                 key={t}
                 label={t}
-                active={activeTopic === t}
+                active={topicFilter === t}
                 onClick={() => setActiveTopic((prev) => toggleTopic(prev, t))}
               />
             ))}
@@ -51,12 +68,12 @@ export default function App({ initialUid }: { initialUid?: string }) {
           <h2 className="font-bold mb-2">Feed</h2>
           <div className="space-y-3">
             {feed.messages
-              .filter((m) => !activeTopic || m.topic === activeTopic)
+              .filter((m) => !topicFilter || m.topic === topicFilter)
               .map((m) => (
                 <PostCard
                   key={m.id}
                   {...m}
-                  activeTopic={activeTopic}
+                  activeTopic={topicFilter}
                   onTagClick={(t) =>
                     setActiveTopic((prev) => toggleTopic(prev, t))
                   }

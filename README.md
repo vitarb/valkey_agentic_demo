@@ -73,3 +73,5 @@ Feel free to modify the services or compose file to experiment further!
 
 Both `/ws/feed/{uid}` and `/ws/topic/{slug}` accept an optional `backlog` query
 parameter to stream the latest N items on connect.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the CI build cache and the development container.

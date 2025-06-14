@@ -4,6 +4,10 @@ FROM python:3.12-slim AS builder
 ENV HF_HOME=/opt/hf_cache \
     HF_HUB_DISABLE_XET=1
 WORKDIR /app
+COPY .tools /usr/local/.tools
+ENV PATH=/usr/local/.tools/bin:$PATH
+RUN apt-get update && apt-get install -y golang-go && rm -rf /var/lib/apt/lists/*
+RUN command -v mockgen >/dev/null || go install github.com/golang/mock/mockgen@v1.6.0
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt

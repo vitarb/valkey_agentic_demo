@@ -6,7 +6,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - run: docker compose --profile cpu build
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          cache-from: type=gha,scope=dev-img
+          cache-to: type=gha,scope=dev-img,mode=max
 
   verify-valkey:
     runs-on: ubuntu-latest

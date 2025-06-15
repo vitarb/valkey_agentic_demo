@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Create compact Grafana dashboard & datasource (Python ≤3.7 compatible)."""
+"""Create (or overwrite) the compact Grafana dashboard & datasource.
+
+ * fixes outdated Redis metric names
+ * surfaces trim counters & GPU utilisation
+ * adds CPU / mem / latency visibility for a convincing Valkey story
+"""
 import json, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -10,73 +15,96 @@ for sub in (
 ):
     (ROOT / sub).mkdir(parents=True, exist_ok=True)
 
-# datasource ------------------------------------------------------
-DATA_SRC = (
+# ────────────────────────────────────────────────────
+#  Datasource
+# ────────────────────────────────────────────────────
+DS = (
     "apiVersion: 1\n"
     "datasources:\n"
     "- uid: prom\n"
     "  name: Prometheus\n"
     "  type: prometheus\n"
     "  url: http://prometheus:9090\n"
-    "  isDefault: false\n"
+    "  isDefault: true\n"
 )
-(ROOT / "grafana/provisioning/datasources/prom.yaml").write_text(DATA_SRC)
+(ROOT / "grafana/provisioning/datasources/prom.yaml").write_text(DS)
 
-# helper ----------------------------------------------------------
-def panel(title, exprs, row, col, stack=False):
-    w, h = 12, 8
-    x = col * w
-    y = row * h
-    tgts = [{"expr": e, "refId": chr(65+i)} for i, e in enumerate(exprs)]
+# ────────────────────────────────────────────────────
+#  Helper
+# ────────────────────────────────────────────────────
+
+def panel(title, exprs, row, col, *, stack=False, unit=None):
+    W, H = 12, 8
+    x, y = col * W, row * H
+    tgts = [{"expr": e, "refId": chr(65 + i)} for i, e in enumerate(exprs)]
     opts = {"legend": {"showLegend": stack}}
     if stack:
         opts["stacking"] = {"mode": "normal"}
+    if unit:
+        opts["standardOptions"] = {"unit": unit}
     return {
         "type": "timeseries",
         "title": title,
         "datasource": {"uid": "prom"},
         "targets": tgts,
-        "gridPos": {"x": x, "y": y, "w": w, "h": h},
+        "gridPos": {"x": x, "y": y, "w": W, "h": H},
         "options": opts,
     }
 
+# ────────────────────────────────────────────────────
+#  Panels
+# ────────────────────────────────────────────────────
 panels = [
-    panel("Producer msgs / s", ["sum(rate(producer_msgs_total[1m]))"], 0, 0),
-    panel("news_raw backlog", ["news_raw_len"], 0, 1),
+    panel("Producer msgs /\u202fs", ["sum(rate(producer_msgs_total[1m]))"], 0, 0),
+    panel("news_raw backlog", ["news_raw_len"],                           0, 1, unit="none"),
+
     panel(
-        "Enrich msgs / s",
+        "Enrich msgs /\u202fs",
         ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"],
         1,
         0,
     ),
-    panel("Fan-out backlog", ["topic_stream_len"], 1, 1),
-    panel("Fan-out msgs / s", ["sum(rate(fan_out_total[1m]))"], 2, 0),
-    panel("Reader pops / s", ["rate(reader_pops_total[1m])"], 2, 1),
-    # summariser panel removed - summariser service deprecated
-    panel("Feeds backlog", ["feed_backlog"], 3, 1),
-    panel("Valkey ops / s", ["rate(redis_total_commands_processed[1m])"], 4, 0),
-    panel("Valkey mem MB", ["redis_memory_used_bytes / 1024 / 1024"], 4, 1),
-    panel("Replay topic msgs / s", ["rate(producer_msgs_total[1m])"], 5, 0, stack=True),
-    panel("Enrich out by topic / s", ["rate(enrich_out_total[1m])"], 5, 1, stack=True),
-    panel("Fan-out by topic / s", ["rate(fan_out_total[1m])"], 6, 0, stack=True),
-    # dropped valkey p95 panel - exporter lacks latency histogram
+    panel("Fan\u2011out backlog", ["sum(topic_stream_len)"], 1, 1, unit="none"),
+
+    panel("Fan\u2011out msgs /\u202fs", ["sum(rate(fan_out_total[1m]))"], 2, 0),
+    panel("Reader pops /\u202fs", ["rate(reader_pops_total[1m])"], 2, 1),
+
+    panel("Feeds backlog", ["feed_backlog"],             3, 1),
+
+    #  Valkey exporter metrics – names fixed (redis 1.x‑style)
+    panel("Valkey ops /\u202fs", ["rate(redis_commands_processed_total[1m])"], 4, 0),
+    panel("Valkey memory MB", ["redis_memory_used_bytes/1024/1024"],     4, 1, unit="bytes"),
+
+    #  Latency (p99) – fixed histogram query
     panel(
-        "Valkey p99 us",
-        ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m]))"],
-        7,
+        "Valkey p99\u202f\u00b5s",
+        [
+            "histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6"
+        ],
+        5,
         0,
+        unit="\u00b5s",
     ),
+
+    #  GPU utilisation flag published by enrich services
+    panel("Enrich replicas on GPU", ["sum(enrich_gpu)"], 5, 1, unit="none"),
+
+    #  Stream trimming diagnostics
+    panel("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"], 6, 0),
+    panel("topic trim ops",    ["irate(topic_stream_trim_ops_total[5m])"], 6, 1),
 ]
 
 dashboard = {
     "uid": "agent-overview",
     "title": "Agent Overview",
     "schemaVersion": 38,
-    "version": 3,
+    "version": 4,
     "refresh": "5s",
-    "panels": panels
+    "panels": panels,
 }
-(ROOT/"grafana/dashboards/agent_overview.json").write_text(json.dumps(dashboard, indent=2))
+(ROOT / "grafana/dashboards/agent_overview.json").write_text(
+    json.dumps(dashboard, indent=2)
+)
 
 PROV = (
     "apiVersion: 1\n"
@@ -89,5 +117,4 @@ PROV = (
 )
 (ROOT / "grafana/provisioning/dashboards/dash.yaml").write_text(PROV)
 
-print("✓ Grafana provisioning + dashboard written")
-
+print("\u2713 Grafana provisioning updated")

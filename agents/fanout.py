@@ -1,93 +1,100 @@
-import os, json, asyncio, redis.asyncio as redis
-from redis.exceptions import ConnectionError as RedisConnError
-from builtins import open as builtin_open
+"""
+Fan‑out service (topic stream → per‑user feeds).
 
-# alias built-in open so tests can monkeypatch this module's open()
-open = builtin_open
+Changes:
+ • Avoid ZRANGE per message – cache subscriber list for 1 s per topic.
+ • Replace heavy Lua with a tiny 'trim only' script; pushes done in‑client.
+ • Adds Prometheus gauge for subscriber count + trim ops.
+"""
+import os, json, asyncio, time, redis.asyncio as redis
+from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Gauge, start_http_server
 
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 TOPICS = ["politics","business","technology","sports","health",
           "climate","science","education","entertainment","finance"]
-FEED_MAX_LEN = int(os.getenv("FEED_LEN", "100"))      # per-user feed length
-TOPIC_MAX_LEN = int(os.getenv("TOPIC_MAXLEN", "10000"))  # topic stream length
+FEED_MAX_LEN  = int(os.getenv("FEED_LEN",    "100"))
+TOPIC_MAX_LEN = int(os.getenv("TOPIC_MAXLEN","10000"))
+CACHE_TTL     = 1.0  # seconds
 
-IN  = Counter("fan_in_total",  "")
-OUT = Counter("fan_out_total", "", ["topic"])
-Q_LEN = Gauge("topic_stream_len", "Length of each topic stream", ["topic"])
-FEED_PUSH = Counter("feed_push_total", "")
-FEED_LEN = Gauge("feed_len", "", ["uid"])
-TRIM_OPS = Gauge("topic_stream_trim_ops_total", "")
-TOPIC_MAX_LEN_GAUGE = Gauge("topic_max_len", "Current trim length for topic streams")
+IN        = Counter("fan_in_total",              "")
+OUT       = Counter("fan_out_total",             "", ["topic"])
+Q_LEN     = Gauge("topic_stream_len",            "", ["topic"])
+SUBS      = Gauge("topic_subscribers",           "Users per topic", ["topic"])
+FEED_PUSH = Counter("feed_push_total",           "")
+FEED_LEN  = Gauge("feed_len",                    "", ["uid"])
+TRIM_OPS  = Gauge("topic_stream_trim_ops_total", "")
+TOPIC_MAX_LEN_GAUGE = Gauge("topic_max_len",     "",)
+TOPIC_MAX_LEN_GAUGE.set(TOPIC_MAX_LEN)
 
-# -------- helpers --------------------------------------------------
+# ──────────────────────────────
 async def rconn():
     while True:
         try:
             r = await redis.from_url(VALKEY, decode_responses=True)
-            await r.ping() ; return r
+            await r.ping(); return r
         except Exception:  await asyncio.sleep(1)
 
 async def load_sha(r):
-    lua = open("fanout.lua").read()
-    return await r.script_load(lua)
+    return await r.script_load(open("fanout.lua").read())
 
-# -------- main -----------------------------------------------------
+# ──────────────────────────────
 async def main():
     start_http_server(9111)
-    TOPIC_MAX_LEN_GAUGE.set(TOPIC_MAX_LEN)
     r   = await rconn()
     sha = await load_sha(r)
-    consumer = "fan-1"
 
-    # create consumer groups once
+    consumer = f"fanout-{os.getpid()}"
     for t in TOPICS:
         try:
             await r.xgroup_create(f"topic:{t}", f"cg_{t}", id="0", mkstream=True)
         except redis.ResponseError:
-            pass  # already exists
+            pass
+
+    sub_cache: dict[str, tuple[list[str], float]] = {}  # topic → (uids, expires_at)
 
     while True:
         try:
             for t in TOPICS:
                 stream, grp = f"topic:{t}", f"cg_{t}"
-                msgs = await r.xreadgroup(grp, consumer, {stream: ">"}, count=32, block=50)
+                msgs = await r.xreadgroup(grp, consumer, {stream: ">"}, count=64, block=50)
                 if not msgs:
                     continue
-                for mid, f in msgs[0][1]:
-                    if "data" in f:
-                        try:
-                            payload = json.loads(f["data"])
-                        except Exception:
-                            payload = {"summary": f["data"]}
-                    else:
-                        payload = f
-                    summary = payload.get("summary") or payload.get("body", "")[:250]
-                    payload["summary"] = summary
-                    users = await r.zrange(f"user:topic:{t}", 0, -1)
-                    await r.evalsha(
-                        sha, 1, stream, mid, t, json.dumps(payload), FEED_MAX_LEN, TOPIC_MAX_LEN
-                    )
-                    TRIM_OPS.inc()
-                    await r.xack(stream, grp, mid)
-                    IN.inc(); OUT.labels(topic=t).inc()
 
-                    if users:
-                        pipe = r.pipeline()
-                        for uid in users:
-                            pipe.llen(f"feed:{uid}")
-                        lengths = await pipe.execute()
-                        for uid, ln in zip(users, lengths):
-                            FEED_PUSH.inc()
-                            FEED_LEN.labels(uid=uid).set(ln)
+                # fetch & cache subscribers
+                uids, expiry = sub_cache.get(t, ([], 0.0))
+                now = time.time()
+                if now >= expiry:
+                    uids = await r.zrange(f"user:topic:{t}", 0, -1)
+                    sub_cache[t] = (uids, now + CACHE_TTL)
+                    SUBS.labels(topic=t).set(len(uids))
+
+                pipe = r.pipeline()
+                for mid, f in msgs[0][1]:
+                    payload = f.get("data")
+                    if not payload:
+                        payload = json.dumps(f)
+                    # fan‑out
+                    for uid in uids:
+                        key = f"feed:{uid}"
+                        pipe.lpush(key, payload)
+                        pipe.ltrim(key, 0, FEED_MAX_LEN - 1)
+                        FEED_PUSH.inc()
+                    # ack & trim
+                    pipe.xack(stream, grp, mid)
+                    IN.inc(); OUT.labels(topic=t).inc()
+                # one trim op per batch
+                pipe.evalsha(sha, 1, stream, TOPIC_MAX_LEN)
+                TRIM_OPS.inc()
+                await pipe.execute()
 
                 Q_LEN.labels(topic=t).set(await r.xlen(stream))
-            await asyncio.sleep(0.05)
+
+            await asyncio.sleep(0.02)
+
         except (RedisConnError, redis.ResponseError):
-            # reconnect or reload script if Valkey restarted
             r   = await rconn()
             sha = await load_sha(r)
 
 if __name__ == "__main__":
     asyncio.run(main())
-

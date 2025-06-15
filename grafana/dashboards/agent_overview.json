@@ -1,0 +1,340 @@
+{
+  "uid": "agent-overview",
+  "title": "Agent Overview",
+  "schemaVersion": 38,
+  "version": 4,
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Producer msgs /\u202fs",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(producer_msgs_total[1m]))",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "news_raw backlog",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "news_raw_len",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Enrich msgs /\u202fs",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "rate(enrich_in_total[1m])",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(enrich_out_total[1m]))",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Fan\u2011out backlog",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "sum(topic_stream_len)",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Fan\u2011out msgs /\u202fs",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(fan_out_total[1m]))",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Reader pops /\u202fs",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "rate(reader_pops_total[1m])",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Feeds backlog",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "feed_backlog",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Valkey ops /\u202fs",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_commands_processed_total[1m])",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Valkey memory MB",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes/1024/1024",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Valkey p99\u202f\u00b5s",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "\u00b5s"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Enrich replicas on GPU",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "sum(enrich_gpu)",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "news_raw trim ops",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "irate(news_raw_trim_ops_total[5m])",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "topic trim ops",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "irate(topic_stream_trim_ops_total[5m])",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    }
+  ]
+}

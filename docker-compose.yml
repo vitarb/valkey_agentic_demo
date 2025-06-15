@@ -99,8 +99,9 @@ services:
     ports: ["8500:80"]
     depends_on: [gateway]
 
+  # Prometheus exporter (Valkey)
   valkey_exporter:
-    image: oliver006/redis_exporter:latest   # <─ official Prometheus exporter
+    image: oliver006/redis_exporter:latest   # <─ exporter v1.x exposes *_total metrics
     command: ["--redis.addr=redis://valkey:6379", "--latency-metrics"]
     ports: ["9121:9121"]
     depends_on: [valkey]
@@ -110,3 +111,6 @@ services:
     command: python agents/latency_exporter.py
     ports: ["9122:9122"]
     depends_on: [valkey]
+
+  #  Optionally scale enrich / fanout / reader via
+  #    docker compose up --scale enrich=6 --scale fanout=3 --scale reader=4

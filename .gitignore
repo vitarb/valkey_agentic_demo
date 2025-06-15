@@ -1,6 +1,6 @@
 __pycache__/\n*.pyc\n
 .demo_runs
 data
-grafana
+# grafana configuration now tracked
 *.pem
 node_modules/

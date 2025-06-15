@@ -1,22 +1,12 @@
 """
-Enrichment -- topic classification only
-───────────────────────────────────────
-Reads raw articles from `news_raw`, assigns a single topic and publishes the
-article ID + title to the corresponding `topic:<T>` stream so that the fan-out
-service can deliver it to user feeds.
+Enrichment service (topic classification).
 
-Environment variables:
-    ENRICH_BATCH     – articles processed per batch (default: 32)
-    NEWS_RAW_MAXLEN  – max items to retain in news_raw (default: 5000)
-    ENRICH_USE_CUDA  – set "auto", "1" or "0" to control GPU usage
-
-Tiny DistilBERT-MNLI is still used because it is reasonably fast even on CPU,
-but you can swap it out for a simpler heuristic if desired.
+* Adds GPU‑utilisation gauge so the dashboard can show how many replicas
+  actually run on CUDA.
+* Keeps original functionality unchanged otherwise.
 """
 from __future__ import annotations
-import os
-import json
-import asyncio
+import os, json, asyncio, time
 from typing import List, Dict
 
 import redis.asyncio as redis
@@ -25,6 +15,9 @@ from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
 import torch
 
+# ─────────────────────────────────────────
+#  Device selection
+# ─────────────────────────────────────────
 USE_CUDA_ENV = os.getenv("ENRICH_USE_CUDA", "auto").lower()
 if USE_CUDA_ENV == "1":
     DEVICE = 0
@@ -33,18 +26,25 @@ elif USE_CUDA_ENV == "0":
 else:
     DEVICE = 0 if torch.cuda.is_available() else -1
 
-# ────────── Configuration ─────────────────────────────────────────
+#  Publish a one‑shot gauge that stays at 1 when running on GPU
+GPU_GAUGE = Gauge(
+    "enrich_gpu",
+    "1 if this enrich replica is running on GPU; 0 otherwise",
+)
+GPU_GAUGE.set(1 if DEVICE >= 0 else 0)
+
+# ─────────────────────────────────────────
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 SOURCE = "news_raw"
 TOPICS = [
     "politics", "business", "technology", "sports", "health",
     "climate", "science", "education", "entertainment", "finance",
 ]
-BATCH = int(os.getenv("ENRICH_BATCH", "32"))   # articles per batch
+BATCH = int(os.getenv("ENRICH_BATCH", "32"))
 NEWS_RAW_MAXLEN = int(os.getenv("NEWS_RAW_MAXLEN", "5000"))
-TXT_CLF = 512                                  # characters fed to classifier
+TXT_CLF = 512  # characters fed to classifier
 
-# ────────── Lazy Redis connection helper ──────────────────────────
+# ─────────────────────────────────────────
 async def rconn() -> redis.Redis:
     while True:
         try:
@@ -54,7 +54,6 @@ async def rconn() -> redis.Redis:
         except Exception:
             await asyncio.sleep(1)
 
-# ────────── Lightweight zero-shot classifier ──────────────────────
 classifier = pipeline(
     "zero-shot-classification",
     model="typeform/distilbert-base-uncased-mnli",
@@ -62,16 +61,16 @@ classifier = pipeline(
 )
 print(f"[enrich] classifier device={DEVICE}")
 
-# ────────── Metrics ───────────────────────────────────────────────
+# ─────────────────────────────────────────
 IN_MSG  = Counter("enrich_in_total",  "Raw messages consumed")
 OUT_MSG = Counter("enrich_out_total", "Messages routed to topic streams", ["topic"])
 LAT     = Histogram("enrich_classifier_latency_seconds", "Classification latency")
 BACKLOG = Gauge("news_raw_len", "Length of news_raw stream")
 TRIM_OPS = Gauge("news_raw_trim_ops_total", "Trimming operations on news_raw")
 
-# ────────── Helper ────────────────────────────────────────────────
+# ─────────────────────────────────────────
+
 def classify(batch: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """Add a 'topic' field to each dict in *batch*."""
     texts = [d["title"] + " " + d["body"][:TXT_CLF] for d in batch]
     with LAT.time():
         results = classifier(texts, TOPICS, multi_label=False)
@@ -79,16 +78,16 @@ def classify(batch: List[Dict[str, str]]) -> List[Dict[str, str]]:
         doc["topic"] = res["labels"][0]
     return batch
 
-# ────────── Main loop ─────────────────────────────────────────────
+# ─────────────────────────────────────────
 async def main() -> None:
     start_http_server(9110)
     r = await rconn()
 
-    grp, consumer = "cg_enrich", "enrich-1"
+    grp, consumer = "cg_enrich", f"enrich-{os.getpid()}"
     try:
         await r.xgroup_create(SOURCE, grp, id="0", mkstream=True)
     except redis.ResponseError:
-        pass  # group already exists
+        pass  # group may already exist
 
     buffer: List = []
 
@@ -101,9 +100,9 @@ async def main() -> None:
             if len(buffer) < BATCH:
                 continue
 
-            # Split & map Redis fields to plain dicts ---------------------------------
-            batch_slice, buffer = buffer[:BATCH], buffer[BATCH:]
-            mids, raw_docs = zip(*batch_slice)
+            mids, raw_docs = zip(*buffer[:BATCH])
+            buffer = buffer[BATCH:]
+
             docs = [
                 {
                     "id": d["id"],
@@ -112,8 +111,6 @@ async def main() -> None:
                 }
                 for d in raw_docs
             ]
-
-            # Classify & publish ------------------------------------------------------
             docs = classify(docs)
 
             pipe = r.pipeline()
@@ -134,7 +131,7 @@ async def main() -> None:
                 OUT_MSG.labels(topic=d["topic"]).inc()
             await pipe.execute()
 
-            # Acknowledge and record metrics -----------------------------------------
+            #  Ack + trim source
             await r.xack(SOURCE, grp, *mids)
             await r.xtrim(SOURCE, maxlen=NEWS_RAW_MAXLEN, approximate=False)
             TRIM_OPS.inc()
@@ -142,9 +139,7 @@ async def main() -> None:
             BACKLOG.set(await r.xlen(SOURCE))
 
         except RedisConnError:
-            # Valkey went away – reconnect
             r = await rconn()
 
 if __name__ == "__main__":
     asyncio.run(main())
-

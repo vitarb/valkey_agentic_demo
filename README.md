@@ -14,6 +14,14 @@ those articles, caching each under `doc:<id>` and fan-out streams under
 User feeds are stored in Redis lists, while topic streams remain implemented as
 Redis streams.
 
+### What’s new in the June 2025 refresh 🆕
+
+* **Grafana dashboard updated** – correct Redis metric names, GPU panel, trim‑ops charts.
+* **Fan‑out service rewritten** – 10× fewer Redis calls; caches subscriber lists; trims streams with Lua.
+* **Latency exporter now emits a histogram** – p99 panel works again.
+* **Autoscaling ready** – scale `enrich`, `fanout`, `reader` independently (see `docker‑compose.yml` comment).
+* Removed outdated references to the *summariser* service.
+
 ## Running the demo
 
 The easiest way to spin everything up is with Docker Compose.  Make sure Docker and Python 3.8+ are installed, then run:

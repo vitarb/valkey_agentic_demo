@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Create (or overwrite) the compact Grafana dashboard & datasource.
+"""(Re)generate the Grafana datasource and compact dashboard ‑ now in **4 columns**.
 
- * fixes outdated Redis metric names
- * surfaces trim counters & GPU utilisation
- * adds CPU / mem / latency visibility for a convincing Valkey story
+* Uses the unified *valkey_metrics_exporter.py* metric set (keeps the familiar
+  `redis_*` names so the queries stay stable).
+* Switches from a fixed 2‑column grid to **responsive 4‑column layout** so more
+  panels fit on‑screen without endless scrolling.
 """
-import json, pathlib
+
+from __future__ import annotations
+import json
+import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 for sub in (
@@ -16,7 +20,7 @@ for sub in (
     (ROOT / sub).mkdir(parents=True, exist_ok=True)
 
 # ────────────────────────────────────────────────────
-#  Datasource
+#  Datasource (unchanged)
 # ────────────────────────────────────────────────────
 DS = (
     "apiVersion: 1\n"
@@ -30,73 +34,91 @@ DS = (
 (ROOT / "grafana/provisioning/datasources/prom.yaml").write_text(DS)
 
 # ────────────────────────────────────────────────────
-#  Helper
+#  Small helper – auto‑places panels in a 4‑column grid
 # ────────────────────────────────────────────────────
+COLS: int = 4          # how many charts per row
+W, H = 6, 8           # Grafana grid units (24 columns wide → 24/4 = 6)
 
-COLS = 36
-PANELS_PER_ROW = 6
+panels: list[dict] = []
 
 
-def panel(title, exprs, idx, *, stack=False, unit=None):
-    W, H = 6, 8
-    col = idx % PANELS_PER_ROW
-    row = idx // PANELS_PER_ROW
+def add_panel(title: str, exprs: list[str] | tuple[str, ...], *, stack: bool = False, unit: str | None = None):
+    """Append a timeseries panel and place it automatically."""
+    idx = len(panels)
+    row, col = divmod(idx, COLS)
     x, y = col * W, row * H
     tgts = [{"expr": e, "refId": chr(65 + i)} for i, e in enumerate(exprs)]
-    opts = {"legend": {"showLegend": stack}}
+
+    opts: dict = {"legend": {"showLegend": stack}}
     if stack:
         opts["stacking"] = {"mode": "normal"}
     if unit:
         opts["standardOptions"] = {"unit": unit}
-    return {
+
+    panels.append({
         "type": "timeseries",
         "title": title,
         "datasource": {"uid": "prom"},
         "targets": tgts,
         "gridPos": {"x": x, "y": y, "w": W, "h": H},
         "options": opts,
-    }
+    })
+
 
 # ────────────────────────────────────────────────────
-#  Panels
+#  Dashboard contents (order ⇒ left‑to‑right, top‑to‑bottom)
 # ────────────────────────────────────────────────────
+add_panel("Producer msgs / s", ["sum(rate(producer_msgs_total[1m]))"])
+add_panel("news_raw backlog", ["news_raw_len"], unit="none")
+add_panel("Enrich msgs / s",
+          ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"])
+add_panel("Fan‑out backlog", ["sum(topic_stream_len)"], unit="none")
 
-PANEL_DEFS = [
-    ("Producer msgs /\u202fs", ["sum(rate(producer_msgs_total[1m]))"], False, None),
-    ("news_raw backlog", ["news_raw_len"], False, "none"),
-    ("Enrich msgs /\u202fs", ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"], False, None),
-    ("Fan\u2011out backlog", ["sum(topic_stream_len)"], False, "none"),
-    ("Fan\u2011out msgs /\u202fs", ["sum(rate(fan_out_total[1m]))"], False, None),
-    ("Reader pops /\u202fs", ["rate(reader_pops_total[1m])"], False, None),
-    ("Feeds backlog", ["feed_backlog"], False, None),
-    ("Valkey ops /\u202fs", ["rate(redis_commands_processed_total[1m])"], False, None),
-    ("Valkey memory MB", ["redis_memory_used_bytes/1024/1024"], False, "bytes"),
-    ("Valkey p99\u202f\u00b5s", ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6"], False, "\u00b5s"),
-    ("Enrich replicas on GPU", ["sum(enrich_gpu)"], False, None),
-    ("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"], False, None),
-    ("topic trim ops", ["irate(topic_stream_trim_ops_total[5m])"], False, None),
-    ("Connected clients", ["redis_connected_clients"], False, None),
-    ("Cache hits vs misses /s", ["rate(redis_keyspace_hits_total[1m])", "rate(redis_keyspace_misses_total[1m])"], True, None),
-    ("CPU util (%)", ["rate(process_cpu_seconds_total[1m]) * 100"], False, None),
-    ("Mem\u202ffrag ratio", ["redis_mem_fragmentation_ratio"], False, None),
-]
+add_panel("Fan‑out msgs / s", ["sum(rate(fan_out_total[1m]))"])
+add_panel("Reader pops / s", ["rate(reader_pops_total[1m])"])
+add_panel("Feeds backlog", ["feed_backlog"])
+add_panel("Valkey ops / s", ["rate(redis_commands_processed_total[1m])"])
 
-panels = [
-    panel(t, e, i, stack=s, unit=u) for i, (t, e, s, u) in enumerate(PANEL_DEFS)
-]
+add_panel("Valkey memory MB", [
+          "redis_memory_used_bytes/1024/1024"], unit="bytes")
+add_panel(
+    "Valkey p99 µs",
+    ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6"],
+    unit="µs",
+)
+add_panel("Enrich replicas on GPU", ["sum(enrich_gpu)"], unit="none")
+add_panel("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"])
+
+add_panel("topic trim ops", ["irate(topic_stream_trim_ops_total[5m])"])
+add_panel("Connected clients", ["redis_connected_clients"])
+add_panel(
+    "Cache hits vs misses /s",
+    ["rate(redis_keyspace_hits_total[1m])",
+     "rate(redis_keyspace_misses_total[1m])"],
+    stack=True,
+)
+add_panel("CPU util (%)", ["rate(process_cpu_seconds_total[1m]) * 100"])
+
+add_panel("Mem frag ratio", ["redis_mem_fragmentation_ratio"])
+
+# ────────────────────────────────────────────────────
+#  Assemble + write dashboard JSON
+# ────────────────────────────────────────────────────
 dashboard = {
     "uid": "agent-overview",
     "title": "Agent Overview",
     "schemaVersion": 38,
-    "version": 5,           # ← bump so Grafana reloads it
+    "version": 7,          # bump so Grafana hot‑reloads
     "refresh": "5s",
-    "gridPos": {"w": COLS, "h": 1},
     "panels": panels,
 }
 (ROOT / "grafana/dashboards/agent_overview.json").write_text(
     json.dumps(dashboard, indent=2)
 )
 
+# ────────────────────────────────────────────────────
+#  Provider stub (unchanged)
+# ────────────────────────────────────────────────────
 PROV = (
     "apiVersion: 1\n"
     "providers:\n"
@@ -108,4 +130,4 @@ PROV = (
 )
 (ROOT / "grafana/provisioning/dashboards/dash.yaml").write_text(PROV)
 
-print("\u2713 Grafana provisioning updated")
+print("✓ Grafana provisioning updated – 4‑column layout (", len(panels), "panels)")

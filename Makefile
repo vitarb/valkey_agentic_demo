@@ -1,10 +1,10 @@
 .PHONY: dev down clear logs data test
 
-SERVICES = enrich fanout reader replay dashboard grafana gateway ui
+SERVICES = enrich fanout reader replay dashboard grafana gateway ui_web valkey_exporter
 SEED     = seed
 
 dev:
-	 docker compose --profile cpu up --build -d
+	docker compose --profile cpu up --build -d
 
 down:
 	COMPOSE_PROFILES=cpu,gpu docker compose down --remove-orphans
@@ -26,3 +26,4 @@ data:
 
 test:
 	PYTHONPATH=$(CURDIR) pytest -q
+

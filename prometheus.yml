@@ -1,5 +1,6 @@
 global:
   scrape_interval: 5s
+
 scrape_configs:
   - job_name: agents
     static_configs:
@@ -9,6 +10,6 @@ scrape_configs:
         - reader:9112
         - seed:9113
         - replay:9114
-        - valkey_exporter:9121
-        - latency_exporter:9122
+        - valkey_exporter:9121   # unified exporter
         - dashboard:8501
+

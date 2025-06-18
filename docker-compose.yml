@@ -7,30 +7,27 @@ services:
       interval: 5s
       retries: 5
 
+  # ─────────────────────────── shared image layers ────────────────────────────
   base: &base
     build:
       context: .
-      args:
-        USE_CUDA: 0
+      args: { USE_CUDA: 0 }
     volumes: ["./data:/app/data:ro"]
-    environment:
-      - VALKEY_URL=redis://valkey:6379
+    environment: [ VALKEY_URL=redis://valkey:6379 ]
 
   base_gpu: &base_gpu
     build:
       context: .
-      args:
-        USE_CUDA: 1
+      args: { USE_CUDA: 1 }
     volumes: ["./data:/app/data:ro"]
-    environment:
-      - VALKEY_URL=redis://valkey:6379
+    environment: [ VALKEY_URL=redis://valkey:6379 ]
     profiles: ["gpu"]
 
-
+  # ───────────────────────────── monitoring stack ─────────────────────────────
   prometheus:
     image: prom/prometheus:latest
-    command: ['--config.file=/etc/prometheus/prometheus.yml']
-    volumes: ['./prometheus.yml:/etc/prometheus/prometheus.yml']
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml"]
     ports: ["9090:9090"]
 
   grafana:
@@ -44,20 +41,27 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/etc/grafana/dashboards
-      - ./grafana/custom/custom.css:/usr/share/grafana/public/css/custom/custom.css
 
+  # single exporter → exposes 9121 and covers latency buckets too
+  valkey_exporter:
+    <<: *base
+    command: python agents/valkey_metrics_exporter.py
+    ports: ["9121:9121"]
+    depends_on: [valkey]
+
+  # ──────────────────────────────── agents ────────────────────────────────────
   enrich:
     <<: *base
     command: python agents/enrich.py
     depends_on: [valkey, prometheus]
-    deploy: {replicas: 2}
+    deploy: { replicas: 2 }
     profiles: ["cpu"]
 
   enrich_gpu:
     <<: *base_gpu
     command: python agents/enrich.py
     depends_on: [valkey, prometheus]
-    deploy: {replicas: 2}
+    deploy: { replicas: 2 }
     runtime: nvidia
     profiles: ["gpu"]
 
@@ -65,7 +69,6 @@ services:
     <<: *base
     command: python agents/fanout.py
     depends_on: [valkey, prometheus]
-    deploy: {replicas: 1}
 
   seed:
     <<: *base
@@ -76,7 +79,6 @@ services:
     <<: *base
     command: python agents/user_reader.py
     depends_on: [valkey, prometheus]
-    deploy: {replicas: 1}
 
   replay:
     <<: *base
@@ -94,8 +96,7 @@ services:
 
   gateway:
     build: ./api_gateway
-    environment:
-      - VALKEY_URL=redis://valkey:6379
+    environment: [ VALKEY_URL=redis://valkey:6379 ]
     ports: ["8000:8000"]
     depends_on: [valkey]
 
@@ -104,18 +105,6 @@ services:
     ports: ["8500:80"]
     depends_on: [gateway]
 
-  # Prometheus exporter (Valkey)
-  valkey_exporter:
-    image: oliver006/redis_exporter:latest   # <─ exporter v1.x exposes *_total metrics
-    command: ["--redis.addr=redis://valkey:6379", "--latency-metrics"]
-    ports: ["9121:9121"]
-    depends_on: [valkey]
+  # Scale example:
+  #   docker compose up --scale enrich=6 --scale fanout=3 --scale reader=4
 
-  latency_exporter:
-    <<: *base
-    command: python agents/latency_exporter.py
-    ports: ["9122:9122"]
-    depends_on: [valkey]
-
-  #  Optionally scale enrich / fanout / reader via
-  #    docker compose up --scale enrich=6 --scale fanout=3 --scale reader=4

@@ -33,23 +33,27 @@ async def feed_ws(
     r = Depends(get_rdb),
 ):
     await ws.accept()
-    key = f"feed:{uid}"
+    # We now stream from the *immutable* per-user stream produced by fan-out
+    # instead of popping the feed list (which the reader service consumes).
+    stream = f"feed_stream:{uid}"
     try:
-        entries = await r.lrange(key, 0, backlog - 1)
-        for payload in reversed(entries):
-            try:
-                await ws.send_json(json.loads(payload))
-            except Exception:
-                await ws.send_json(payload)
+        # –– backlog (latest → oldest, capped by ?backlog=N) –––––––––
+        entries = await r.xrevrange(stream, "+", "-", count=backlog)
+        for _id, data in reversed(entries):
+            payload = data.get("data") or data
+            await ws.send_json(json.loads(payload) if isinstance(payload, str) else payload)
+
+        # –– live tail using XREAD –––––––––––––––––
+        last_id = "$"
         while True:
-            result = await r.brpop(key, timeout=0)
-            if not result:
+            msgs = await r.xread({stream: last_id}, block=0, count=1)
+            if not msgs:
                 continue
-            _, payload = result
-            try:
-                await ws.send_json(json.loads(payload))
-            except Exception:
-                await ws.send_json(payload)
+            _, entries = msgs[0]
+            for _id, data in entries:
+                last_id = _id
+                payload = data.get("data") or data
+                await ws.send_json(json.loads(payload) if isinstance(payload, str) else payload)
     except WebSocketDisconnect:
         pass
 

@@ -8,7 +8,11 @@ Changes:
 """
 import os, json, asyncio, time, redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
+from builtins import open as builtin_open
 from prometheus_client import Counter, Gauge, start_http_server
+
+# expose built-in open so tests can monkeypatch this module
+open = builtin_open
 
 VALKEY = os.getenv("VALKEY_URL", "redis://valkey:6379")
 TOPICS = ["politics","business","technology","sports","health",
@@ -69,7 +73,8 @@ async def main():
                     sub_cache[t] = (uids, now + CACHE_TTL)
                     SUBS.labels(topic=t).set(len(uids))
 
-                pipe = r.pipeline()
+                use_pipe = hasattr(r, "pipeline")
+                pipe = r.pipeline() if use_pipe else r
                 for mid, f in msgs[0][1]:
                     payload = f.get("data")
                     if not payload:
@@ -77,16 +82,40 @@ async def main():
                     # fan‑out
                     for uid in uids:
                         key = f"feed:{uid}"
-                        pipe.lpush(key, payload)
-                        pipe.ltrim(key, 0, FEED_MAX_LEN - 1)
+                        # list remains the primary queue for the reader
+                        if use_pipe:
+                            pipe.lpush(key, payload)
+                            pipe.ltrim(key, 0, FEED_MAX_LEN - 1)
+                        else:
+                            await pipe.lpush(key, payload)
+                            await pipe.ltrim(key, 0, FEED_MAX_LEN - 1)
                         FEED_PUSH.inc()
+
+                        # NEW: mirror every item into a per-user stream
+                        # This lets WebSocket clients replay the latest
+                        # messages without deleting them (reader still
+                        # consumes the list, not the stream).
+                        s_key = f"feed_stream:{uid}"
+                        if use_pipe:
+                            pipe.xadd(s_key, {"data": payload})
+                            pipe.xtrim(s_key, maxlen=FEED_MAX_LEN)
+                        else:
+                            await pipe.xadd(s_key, {"data": payload})
+                            await pipe.xtrim(s_key, maxlen=FEED_MAX_LEN)
                     # ack & trim
-                    pipe.xack(stream, grp, mid)
+                    if use_pipe:
+                        pipe.xack(stream, grp, mid)
+                    else:
+                        await pipe.xack(stream, grp, mid)
                     IN.inc(); OUT.labels(topic=t).inc()
-                # one trim op per batch
-                pipe.evalsha(sha, 1, stream, TOPIC_MAX_LEN)
+                # one trim op per batch  (topic stream only)
+                if use_pipe:
+                    pipe.evalsha(sha, 1, stream, TOPIC_MAX_LEN)
+                else:
+                    await pipe.evalsha(sha, 1, stream, TOPIC_MAX_LEN)
                 TRIM_OPS.inc()
-                await pipe.execute()
+                if use_pipe:
+                    await pipe.execute()
 
                 Q_LEN.labels(topic=t).set(await r.xlen(stream))
 

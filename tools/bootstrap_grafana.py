@@ -92,13 +92,24 @@ panels = [
     #  Stream trimming diagnostics
     panel("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"], 6, 0),
     panel("topic trim ops",    ["irate(topic_stream_trim_ops_total[5m])"], 6, 1),
+
+    # –––––––––––––––––  Valkey deep-dive (new)  –––––––––––––––
+    panel("Connected clients", ["redis_connected_clients"],                    7, 0),
+    panel(
+        "Cache hits vs misses /s",
+        ["rate(redis_keyspace_hits_total[1m])",
+         "rate(redis_keyspace_misses_total[1m])"],
+        7, 1, stack=True
+    ),
+    panel("CPU util (%)", ["rate(process_cpu_seconds_total[1m]) * 100"],       8, 0),
+    panel("Mem\u202ffrag ratio", ["redis_mem_fragmentation_ratio"],                 8, 1),
 ]
 
 dashboard = {
     "uid": "agent-overview",
     "title": "Agent Overview",
     "schemaVersion": 38,
-    "version": 4,
+    "version": 5,           # ← bump so Grafana reloads it
     "refresh": "5s",
     "panels": panels,
 }

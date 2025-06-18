@@ -35,7 +35,11 @@ services:
 
   grafana:
     image: grafana/grafana-oss:latest
-    environment: [GF_SECURITY_ADMIN_PASSWORD=admin]
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_DISABLE_INITIAL_ADMIN_CHANGE_PASSWORD=true
     ports: ["3000:3000"]
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning

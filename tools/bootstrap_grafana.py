@@ -33,8 +33,14 @@ DS = (
 #  Helper
 # ────────────────────────────────────────────────────
 
-def panel(title, exprs, row, col, *, stack=False, unit=None):
-    W, H = 12, 8
+COLS = 36
+PANELS_PER_ROW = 6
+
+
+def panel(title, exprs, idx, *, stack=False, unit=None):
+    W, H = 6, 8
+    col = idx % PANELS_PER_ROW
+    row = idx // PANELS_PER_ROW
     x, y = col * W, row * H
     tgts = [{"expr": e, "refId": chr(65 + i)} for i, e in enumerate(exprs)]
     opts = {"legend": {"showLegend": stack}}
@@ -54,63 +60,37 @@ def panel(title, exprs, row, col, *, stack=False, unit=None):
 # ────────────────────────────────────────────────────
 #  Panels
 # ────────────────────────────────────────────────────
-panels = [
-    panel("Producer msgs /\u202fs", ["sum(rate(producer_msgs_total[1m]))"], 0, 0),
-    panel("news_raw backlog", ["news_raw_len"],                           0, 1, unit="none"),
 
-    panel(
-        "Enrich msgs /\u202fs",
-        ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"],
-        1,
-        0,
-    ),
-    panel("Fan\u2011out backlog", ["sum(topic_stream_len)"], 1, 1, unit="none"),
-
-    panel("Fan\u2011out msgs /\u202fs", ["sum(rate(fan_out_total[1m]))"], 2, 0),
-    panel("Reader pops /\u202fs", ["rate(reader_pops_total[1m])"], 2, 1),
-
-    panel("Feeds backlog", ["feed_backlog"],             3, 1),
-
-    #  Valkey exporter metrics – names fixed (redis 1.x‑style)
-    panel("Valkey ops /\u202fs", ["rate(redis_commands_processed_total[1m])"], 4, 0),
-    panel("Valkey memory MB", ["redis_memory_used_bytes/1024/1024"],     4, 1, unit="bytes"),
-
-    #  Latency (p99) – fixed histogram query
-    panel(
-        "Valkey p99\u202f\u00b5s",
-        [
-            "histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6"
-        ],
-        5,
-        0,
-        unit="\u00b5s",
-    ),
-
-    #  GPU utilisation flag published by enrich services
-    panel("Enrich replicas on GPU", ["sum(enrich_gpu)"], 5, 1, unit="none"),
-
-    #  Stream trimming diagnostics
-    panel("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"], 6, 0),
-    panel("topic trim ops",    ["irate(topic_stream_trim_ops_total[5m])"], 6, 1),
-
-    # –––––––––––––––––  Valkey deep-dive (new)  –––––––––––––––
-    panel("Connected clients", ["redis_connected_clients"],                    7, 0),
-    panel(
-        "Cache hits vs misses /s",
-        ["rate(redis_keyspace_hits_total[1m])",
-         "rate(redis_keyspace_misses_total[1m])"],
-        7, 1, stack=True
-    ),
-    panel("CPU util (%)", ["rate(process_cpu_seconds_total[1m]) * 100"],       8, 0),
-    panel("Mem\u202ffrag ratio", ["redis_mem_fragmentation_ratio"],                 8, 1),
+PANEL_DEFS = [
+    ("Producer msgs /\u202fs", ["sum(rate(producer_msgs_total[1m]))"], False, None),
+    ("news_raw backlog", ["news_raw_len"], False, "none"),
+    ("Enrich msgs /\u202fs", ["rate(enrich_in_total[1m])", "sum(rate(enrich_out_total[1m]))"], False, None),
+    ("Fan\u2011out backlog", ["sum(topic_stream_len)"], False, "none"),
+    ("Fan\u2011out msgs /\u202fs", ["sum(rate(fan_out_total[1m]))"], False, None),
+    ("Reader pops /\u202fs", ["rate(reader_pops_total[1m])"], False, None),
+    ("Feeds backlog", ["feed_backlog"], False, None),
+    ("Valkey ops /\u202fs", ["rate(redis_commands_processed_total[1m])"], False, None),
+    ("Valkey memory MB", ["redis_memory_used_bytes/1024/1024"], False, "bytes"),
+    ("Valkey p99\u202f\u00b5s", ["histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6"], False, "\u00b5s"),
+    ("Enrich replicas on GPU", ["sum(enrich_gpu)"], False, None),
+    ("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"], False, None),
+    ("topic trim ops", ["irate(topic_stream_trim_ops_total[5m])"], False, None),
+    ("Connected clients", ["redis_connected_clients"], False, None),
+    ("Cache hits vs misses /s", ["rate(redis_keyspace_hits_total[1m])", "rate(redis_keyspace_misses_total[1m])"], True, None),
+    ("CPU util (%)", ["rate(process_cpu_seconds_total[1m]) * 100"], False, None),
+    ("Mem\u202ffrag ratio", ["redis_mem_fragmentation_ratio"], False, None),
 ]
 
+panels = [
+    panel(t, e, i, stack=s, unit=u) for i, (t, e, s, u) in enumerate(PANEL_DEFS)
+]
 dashboard = {
     "uid": "agent-overview",
     "title": "Agent Overview",
     "schemaVersion": 38,
     "version": 5,           # ← bump so Grafana reloads it
     "refresh": "5s",
+    "gridPos": {"w": COLS, "h": 1},
     "panels": panels,
 }
 (ROOT / "grafana/dashboards/agent_overview.json").write_text(

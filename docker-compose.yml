@@ -44,6 +44,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/custom/custom.css:/usr/share/grafana/public/css/custom/custom.css
 
   enrich:
     <<: *base

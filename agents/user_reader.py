@@ -1,23 +1,44 @@
 """
-User feed reader – pops items at a steady RPS.
+User‑feed reader – now *auto‑ramps* consumption when more users appear.
 
-* Replaces O(U) backlog scan with a rolling counter updated
-  only when we push / pop.
+Changes
+• Pops‑per‑second is no longer fixed; it grows linearly with `latest_uid`
+  according to POP_RATE (default = 0.05 pops / user / sec) and is clamped
+  by MAX_RPS.
+• New Prometheus gauges:
+    – reader_target_rps        (current calculated throughput goal)
+    – avg_feed_backlog         (feed_backlog / latest_uid)
+• Keeps the existing reader_pops_total and latency histogram so existing
+  panels stay valid.
 """
-import os, asyncio, random, time
+from __future__ import annotations
+import os
+import asyncio
+import random
+import time
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError as RedisConnError
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 
 VALKEY_URL = os.getenv("VALKEY_URL", "redis://valkey:6379")
-DEFAULT_RPS = 2.0
 
-POP        = Counter("reader_pops_total", "")
-POP_LAT    = Histogram("reader_pop_latency_seconds", "")
-FEED_LEN   = Gauge("feed_len",              "", ["uid"])
-FEED_BACK  = Gauge("feed_backlog",          "Total length of all feeds")
+# ─── Auto‑scaling knobs ──────────────────────────────────────────────
+POP_RATE = float(os.getenv("POP_RATE", 0.05))          # pops per user per sec
+MAX_RPS = float(os.getenv("MAX_READER_RPS", 200.0))   # safety cap
 
-async def rconn(retries=30, delay=1.0):
+# ─── Prometheus metrics ──────────────────────────────────────────────
+POP = Counter("reader_pops_total",            "Successful feed pops")
+POP_LAT = Histogram("reader_pop_latency_seconds", "BLPOP latency")
+FEED_LEN = Gauge("feed_len",                       "Feed length", ["uid"])
+FEED_BACK = Gauge("feed_backlog",
+                  "Total backlog across feeds")
+TARGET_RPS = Gauge("reader_target_rps",              "Dynamic target pops/s")
+AVG_BACK = Gauge("avg_feed_backlog",               "Mean backlog / user")
+
+# ─── Helpers ─────────────────────────────────────────────────────────
+
+
+async def rconn(retries=30, delay=1.0) -> redis.Redis:
     for _ in range(retries):
         try:
             r = await redis.from_url(VALKEY_URL, decode_responses=True)
@@ -27,28 +48,29 @@ async def rconn(retries=30, delay=1.0):
             await asyncio.sleep(delay)
     raise RuntimeError("Valkey unavailable")
 
+# ─── Main loop ───────────────────────────────────────────────────────
+
+
 async def main(argv=None):
-    import argparse, sys
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--rps", type=float, default=DEFAULT_RPS)
-    args = parser.parse_args([] if argv is None else argv)
-
-    rps = float(os.getenv("READER_RPS", args.rps))
-    delay = 1.0 / rps if rps > 0 else 0.5
-
     start_http_server(9112)
     r = await rconn()
     backlog_total = 0
+    last_calc = 0.0                         # next time we recompute the target
 
     while True:
         try:
-            lu = int(await r.get("latest_uid") or 0)
-            if lu == 0:
-                FEED_BACK.set(0)
-                await asyncio.sleep(delay)
-                continue
+            # ── recompute target RPS once per second ─────────────────
+            now = time.time()
+            if now >= last_calc:
+                latest_uid = int(await r.get("latest_uid") or 0)
+                target_rps = min(MAX_RPS, max(1.0, latest_uid * POP_RATE))
+                delay = 1.0 / target_rps
+                TARGET_RPS.set(target_rps)
+                AVG_BACK.set(backlog_total / latest_uid if latest_uid else 0)
+                last_calc = now + 1.0
 
-            uid = random.randint(0, lu)
+            # ── pick user & consume ──────────────────────────────────
+            uid = random.randint(0, latest_uid) if latest_uid else 0
             key = f"feed:{uid}"
 
             with POP_LAT.time():

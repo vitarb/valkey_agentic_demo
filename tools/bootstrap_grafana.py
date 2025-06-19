@@ -63,6 +63,8 @@ add("Valkey p50 µs", [
     "histogram_quantile(0.50, rate(redis_command_call_duration_seconds_bucket[2m]))*1e6"
 ], unit="µs")
 add("Enrich replicas on GPU", ["sum(enrich_gpu)"], unit="none")
+add("Reader target RPS", ["reader_target_rps"])
+add("Avg feed backlog",  ["avg_feed_backlog"])
 
 add("news_raw trim ops", ["irate(news_raw_trim_ops_total[5m])"])
 add("topic trim ops",    ["irate(topic_stream_trim_ops_total[5m])"])
@@ -72,7 +74,6 @@ add("Cache hits vs misses /s",
      "rate(redis_keyspace_misses_total[1m])"],
     stack=True)
 
-# ─── NEW panels ──────────────────────────────────────────────────────
 add("Valkey net KB/s",
     ["rate(redis_net_input_bytes_total[1m])/1024",
      "rate(redis_net_output_bytes_total[1m])/1024"],
@@ -88,7 +89,7 @@ dashboard = {
     "uid": "agent-overview",
     "title": "Agent Overview",
     "schemaVersion": 38,
-    "version": 10,               # bump → Grafana auto‑reload
+    "version": 11,               # bump → Grafana auto‑reload
     "refresh": "5s",
     "panels": panels,
 }

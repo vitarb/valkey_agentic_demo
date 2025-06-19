@@ -2,7 +2,7 @@
   "uid": "agent-overview",
   "title": "Agent Overview",
   "schemaVersion": 38,
-  "version": 10,
+  "version": 11,
   "refresh": "5s",
   "panels": [
     {
@@ -317,6 +317,54 @@
     },
     {
       "type": "timeseries",
+      "title": "Reader target RPS",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "reader_target_rps",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg feed backlog",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "avg_feed_backlog",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 6,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "news_raw trim ops",
       "datasource": {
         "uid": "prom"
@@ -328,7 +376,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 24,
         "w": 6,
         "h": 8
@@ -352,7 +400,7 @@
         }
       ],
       "gridPos": {
-        "x": 6,
+        "x": 18,
         "y": 24,
         "w": 6,
         "h": 8
@@ -376,8 +424,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 24,
+        "x": 0,
+        "y": 32,
         "w": 6,
         "h": 8
       },
@@ -404,8 +452,8 @@
         }
       ],
       "gridPos": {
-        "x": 18,
-        "y": 24,
+        "x": 6,
+        "y": 32,
         "w": 6,
         "h": 8
       },
@@ -435,7 +483,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 32,
         "w": 6,
         "h": 8
@@ -462,7 +510,7 @@
         }
       ],
       "gridPos": {
-        "x": 6,
+        "x": 18,
         "y": 32,
         "w": 6,
         "h": 8
@@ -489,8 +537,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 32,
+        "x": 0,
+        "y": 40,
         "w": 6,
         "h": 8
       },
@@ -513,8 +561,8 @@
         }
       ],
       "gridPos": {
-        "x": 18,
-        "y": 32,
+        "x": 6,
+        "y": 40,
         "w": 6,
         "h": 8
       },

@@ -2,12 +2,12 @@
   "uid": "agent-overview",
   "title": "Agent Overview",
   "schemaVersion": 38,
-  "version": 7,
+  "version": 10,
   "refresh": "5s",
   "panels": [
     {
       "type": "timeseries",
-      "title": "Producer msgs /\u202fs",
+      "title": "Producer msgs\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -58,7 +58,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Enrich msgs /\u202fs",
+      "title": "Enrich msgs\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -113,7 +113,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Fan\u2011out msgs /\u202fs",
+      "title": "Fan\u2011out msgs\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -137,7 +137,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Reader pops /\u202fs",
+      "title": "Reader pops\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -185,7 +185,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Valkey ops /\u202fs",
+      "title": "Valkey ops\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -242,12 +242,39 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m])) * 1e6",
+          "expr": "histogram_quantile(0.99, rate(redis_command_call_duration_seconds_bucket[2m]))*1e6",
           "refId": "A"
         }
       ],
       "gridPos": {
         "x": 6,
+        "y": 16,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "\u00b5s"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Valkey p50\u202f\u00b5s",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(redis_command_call_duration_seconds_bucket[2m]))*1e6",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
         "y": 16,
         "w": 6,
         "h": 8
@@ -274,7 +301,7 @@
         }
       ],
       "gridPos": {
-        "x": 12,
+        "x": 18,
         "y": 16,
         "w": 6,
         "h": 8
@@ -301,8 +328,8 @@
         }
       ],
       "gridPos": {
-        "x": 18,
-        "y": 16,
+        "x": 0,
+        "y": 24,
         "w": 6,
         "h": 8
       },
@@ -325,7 +352,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 6,
         "y": 24,
         "w": 6,
         "h": 8
@@ -349,7 +376,7 @@
         }
       ],
       "gridPos": {
-        "x": 6,
+        "x": 12,
         "y": 24,
         "w": 6,
         "h": 8
@@ -362,7 +389,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Cache hits vs misses /s",
+      "title": "Cache hits vs misses\u202f/s",
       "datasource": {
         "uid": "prom"
       },
@@ -377,7 +404,7 @@
         }
       ],
       "gridPos": {
-        "x": 12,
+        "x": 18,
         "y": 24,
         "w": 6,
         "h": 8
@@ -393,19 +420,77 @@
     },
     {
       "type": "timeseries",
+      "title": "Valkey net KB/s",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_net_input_bytes_total[1m])/1024",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(redis_net_output_bytes_total[1m])/1024",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Dataset memory MB",
+      "datasource": {
+        "uid": "prom"
+      },
+      "targets": [
+        {
+          "expr": "redis_memory_dataset_bytes/1024/1024",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 6,
+        "y": 32,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "standardOptions": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "CPU util (%)",
       "datasource": {
         "uid": "prom"
       },
       "targets": [
         {
-          "expr": "rate(process_cpu_seconds_total[1m]) * 100",
+          "expr": "rate(process_cpu_seconds_total[1m])*100",
           "refId": "A"
         }
       ],
       "gridPos": {
-        "x": 18,
-        "y": 24,
+        "x": 12,
+        "y": 32,
         "w": 6,
         "h": 8
       },
@@ -428,7 +513,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 18,
         "y": 32,
         "w": 6,
         "h": 8

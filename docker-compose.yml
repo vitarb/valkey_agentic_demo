@@ -14,7 +14,7 @@ services:
       args: { USE_CUDA: 0 }
     volumes:
       - ./data:/app/data:ro
-      - hf_cache:/opt/hf_cache:ro
+      - hf_cache:/opt/hf_cache        # was “…:ro”
     environment: [ VALKEY_URL=redis://valkey:6379 ]
 
   base_gpu: &base_gpu
@@ -23,7 +23,7 @@ services:
       args: { USE_CUDA: 1 }
     volumes:
       - ./data:/app/data:ro
-      - hf_cache:/opt/hf_cache:ro
+      - hf_cache:/opt/hf_cache        # was “…:ro”
     environment: [ VALKEY_URL=redis://valkey:6379 ]
     profiles: ["gpu"]
 

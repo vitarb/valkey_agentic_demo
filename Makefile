@@ -4,7 +4,8 @@ SERVICES = enrich fanout reader replay dashboard grafana gateway ui_web valkey_e
 SEED     = seed
 
 dev:
-	docker compose --profile cpu up --build -d
+	docker compose --profile cpu build --progress=plain
+	docker compose --profile cpu up -d
 
 down:
 	COMPOSE_PROFILES=cpu,gpu docker compose down --remove-orphans

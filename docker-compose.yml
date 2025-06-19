@@ -12,14 +12,18 @@ services:
     build:
       context: .
       args: { USE_CUDA: 0 }
-    volumes: ["./data:/app/data:ro"]
+    volumes:
+      - ./data:/app/data:ro
+      - hf_cache:/opt/hf_cache:ro
     environment: [ VALKEY_URL=redis://valkey:6379 ]
 
   base_gpu: &base_gpu
     build:
       context: .
       args: { USE_CUDA: 1 }
-    volumes: ["./data:/app/data:ro"]
+    volumes:
+      - ./data:/app/data:ro
+      - hf_cache:/opt/hf_cache:ro
     environment: [ VALKEY_URL=redis://valkey:6379 ]
     profiles: ["gpu"]
 
@@ -107,4 +111,7 @@ services:
 
   # Scale example:
   #   docker compose up --scale enrich=6 --scale fanout=3 --scale reader=4
+
+volumes:
+  hf_cache:
 

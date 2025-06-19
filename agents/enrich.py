@@ -15,6 +15,18 @@ from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from transformers import pipeline
 import torch
 
+# Ensure HF cache directory is writable
+def _ensure_cache_dir() -> None:
+    cache = os.getenv("TRANSFORMERS_CACHE") or os.getenv("HF_HOME")
+    if cache and os.access(cache, os.W_OK):
+        return
+    cache = "/tmp/hf_cache"
+    os.makedirs(cache, exist_ok=True)
+    os.environ.setdefault("TRANSFORMERS_CACHE", cache)
+    os.environ.setdefault("HF_HOME", cache)
+
+_ensure_cache_dir()
+
 # ─────────────────────────────────────────
 #  Device selection
 # ─────────────────────────────────────────

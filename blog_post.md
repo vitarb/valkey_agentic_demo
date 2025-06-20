@@ -2,7 +2,7 @@
 
 ---
 
-## Introduction (≈190 words)
+## Introduction
 
 Software is flocking toward **agentic** architectures—small autonomous programs that sense, decide, and act together. When hundreds (or thousands) of agents collaborate, their communication fabric becomes mission‑critical: it must be **fast** enough to keep latency negligible, **observable** enough to debug under load, and **flexible** enough to evolve with new skills.
 

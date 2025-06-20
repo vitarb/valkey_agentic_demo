@@ -1,12 +1,30 @@
 from fastapi import FastAPI, WebSocket, Depends
 from starlette.websockets import WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 import os
 import json
 import redis.asyncio as redis
 
 app = FastAPI()
 
+# ──────────────────────────────  CORS  ──────────────────────────────
+# The React UI is served from port 8500 while the API listens on 8000,
+# which makes them different *origins* in the browser’s eyes.  Without
+# the appropriate `Access‑Control‑Allow‑Origin` header every `fetch()`
+# to `/user/{uid}` is blocked, so the “Interests” widget never appears.
+#
+# A permissive wildcard is fine for a local demo; tighten it or switch
+# to an explicit domain list in production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 rdb = None
+
 
 @app.on_event("startup")
 async def init_redis():
@@ -14,23 +32,26 @@ async def init_redis():
     if rdb is None:
         rdb = await redis.from_url(os.getenv("VALKEY_URL", "redis://localhost:6379"), decode_responses=True)
 
+
 def get_rdb():
     assert rdb is not None, "Redis not configured"
     return rdb
 
+
 @app.get("/user/{uid}")
-async def user(uid: str, r = Depends(get_rdb)):
+async def user(uid: str, r=Depends(get_rdb)):
     data = await r.json().get(f"user:{uid}")
     if not data:
         return {"interests": []}
     return {"interests": data.get("interests", [])}
+
 
 @app.websocket("/ws/feed/{uid}")
 async def feed_ws(
     ws: WebSocket,
     uid: str,
     backlog: int = 100,
-    r = Depends(get_rdb),
+    r=Depends(get_rdb),
 ):
     await ws.accept()
     # We now stream from the *immutable* per-user stream produced by fan-out
@@ -57,12 +78,13 @@ async def feed_ws(
     except WebSocketDisconnect:
         pass
 
+
 @app.websocket("/ws/topic/{slug}")
 async def topic_ws(
     ws: WebSocket,
     slug: str,
     backlog: int = 50,
-    r = Depends(get_rdb),
+    r=Depends(get_rdb),
 ):
     await ws.accept()
     key = f"topic:{slug}"

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useFeed } from './hooks/useFeed';
 import { useUser } from './hooks/useUser';
 import { PostCard } from './components/PostCard';
-import { TagChip } from './components/TagChip';
+import { UserInterests } from './components/UserInterests';
 import { toggleTopic } from './utils';
 
 export default function App({ initialUid }: { initialUid?: string }) {
@@ -31,15 +31,22 @@ export default function App({ initialUid }: { initialUid?: string }) {
   return (
     <div className="min-h-screen bg-[#f7f7fa]">
       <header className="sticky top-0 bg-[#f7f7fa] py-4 mb-4 shadow-sm">
-        <div className="max-w-3xl mx-auto flex items-end gap-4">
-          <h1 className="text-xl font-bold flex-1">Valkey Agentic Demo</h1>
-          <label className="text-sm">User ID</label>
-          <input
-            type="number"
-            className="border rounded px-2 py-1 w-20"
-            value={uid}
-            min={0}
-            onChange={(e) => setUid(Number(e.target.value))}
+        <div className="max-w-3xl mx-auto space-y-2">
+          <div className="flex items-end gap-4">
+            <h1 className="text-xl font-bold flex-1">Valkey Agentic Demo</h1>
+            <label className="text-sm">User ID</label>
+            <input
+              type="number"
+              className="border rounded px-2 py-1 w-20"
+              value={uid}
+              min={0}
+              onChange={(e) => setUid(Number(e.target.value))}
+            />
+          </div>
+          <UserInterests
+            interests={user?.interests ?? []}
+            activeTopic={topicFilter}
+            onTagClick={(t) => setActiveTopic((prev) => toggleTopic(prev, t))}
           />
         </div>
       </header>
@@ -48,16 +55,13 @@ export default function App({ initialUid }: { initialUid?: string }) {
           <section>
             <h2 className="font-bold mb-1">Interests</h2>
             <div className="mb-2">
-              {user.interests.map((t) => (
-                <TagChip
-                  key={t}
-                  label={t}
-                  active={topicFilter === t}
-                  onClick={() =>
-                    setActiveTopic((prev) => toggleTopic(prev, t))
-                  }
-                />
-              ))}
+              <UserInterests
+                interests={user.interests}
+                activeTopic={topicFilter}
+                onTagClick={(t) =>
+                  setActiveTopic((prev) => toggleTopic(prev, t))
+                }
+              />
             </div>
           </section>
         ) : null}

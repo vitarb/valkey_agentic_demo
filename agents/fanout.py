@@ -92,7 +92,7 @@ async def main():
                 for mid, f in msgs[0][1]:
                     payload = f.get("data") or json.dumps(f)
                     doc = json.loads(payload)
-                    doc_id = doc.get("id")  # may be str or int
+                    doc_id = str(doc.get("id") or mid)
 
                     for uid in uids:
                         seen_key = f"feed_seen:{uid}"

@@ -13,6 +13,7 @@ Changes
 """
 from __future__ import annotations
 import os
+import argparse
 import asyncio
 import random
 import time
@@ -52,10 +53,23 @@ async def rconn(retries=30, delay=1.0) -> redis.Redis:
 
 
 async def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rps", type=float, default=None, help="Fixed pops per second")
+    args = parser.parse_args([] if argv is None else argv)
+
+    fixed_rps = args.rps
+    env_rps = os.getenv("READER_RPS")
+    if env_rps is not None:
+        try:
+            fixed_rps = float(env_rps)
+        except ValueError:
+            fixed_rps = None
+
     start_http_server(9112)
     r = await rconn()
     backlog_total = 0
     last_calc = 0.0                         # next time we recompute the target
+    delay = 1.0
 
     while True:
         try:
@@ -63,7 +77,10 @@ async def main(argv=None):
             now = time.time()
             if now >= last_calc:
                 latest_uid = int(await r.get("latest_uid") or 0)
-                target_rps = min(MAX_RPS, max(1.0, latest_uid * POP_RATE))
+                if fixed_rps and fixed_rps > 0:
+                    target_rps = fixed_rps
+                else:
+                    target_rps = min(MAX_RPS, max(1.0, latest_uid * POP_RATE))
                 delay = 1.0 / target_rps
                 TARGET_RPS.set(target_rps)
                 AVG_BACK.set(backlog_total / latest_uid if latest_uid else 0)

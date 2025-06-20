@@ -1,3 +1,6 @@
+# Development requirements include runtime dependencies
+-r requirements.txt
+
 pytest>=7.4,<8          # 8.x breaks with pytest-asyncio<0.24
 pytest-asyncio>=0.23.5,<0.24
 pytest-mock

@@ -39,15 +39,14 @@ async def test_rconn(monkeypatch):
     assert isinstance(conn, DummyRedis)
 
 @pytest.mark.asyncio
-async def test_load_sha(monkeypatch, tmp_path):
+async def test_load_sha(monkeypatch):
     mod = load_module(monkeypatch)
-    script = tmp_path/"fanout.lua"
-    script.write_text("return 1")
-    monkeypatch.setattr(mod, "open", lambda *_: open(script, 'r'))
     redis_inst = DummyRedis()
     sha = await mod.load_sha(redis_inst)
     assert sha == "sha123"
-    assert redis_inst.loaded == "return 1"
+    assert redis_inst.loaded == (
+        "redis.call('XTRIM', KEYS[1], 'MAXLEN', tonumber(ARGV[1])); return 1"
+    )
 
 @pytest.mark.asyncio
 async def test_feed_ltrim(monkeypatch):

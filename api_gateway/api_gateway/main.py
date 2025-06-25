@@ -1,11 +1,22 @@
 from fastapi import FastAPI, WebSocket, Depends
 from starlette.websockets import WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import os
 import json
 import redis.asyncio as redis
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global rdb
+    if rdb is None:
+        rdb = await redis.from_url(
+            os.getenv("VALKEY_URL", "redis://localhost:6379"),
+            decode_responses=True,
+        )
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # ──────────────────────────────  CORS  ──────────────────────────────
 # The React UI is served from port 8500 while the API listens on 8000,
@@ -24,13 +35,6 @@ app.add_middleware(
 
 
 rdb = None
-
-
-@app.on_event("startup")
-async def init_redis():
-    global rdb
-    if rdb is None:
-        rdb = await redis.from_url(os.getenv("VALKEY_URL", "redis://localhost:6379"), decode_responses=True)
 
 
 def get_rdb():

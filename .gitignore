@@ -1,4 +1,5 @@
-__pycache__/\n*.pyc\n
+__pycache__/
+*.pyc
 .demo_runs
 data
 # grafana configuration now tracked
